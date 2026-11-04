@@ -213,4 +213,22 @@ class RandomDrawTest {
         val twoMinutes = listOf(Condition.TimeWindow(LocalTime.of(10, 0), LocalTime.of(10, 2)))
         assertEquals(2, RandomDraw.draws(weekly, "crowded", 2956L, zone, twoMinutes).size)
     }
+
+    @Test
+    fun `a weekly draw fenced to a day of the month is made on that day, whenever it falls`() {
+        // "Dos veces por semana, y sólo el día 15" (2026-11-04): drawn from the whole week, it
+        // rang on the 15th only when chance put a draw there, about one month in four.
+        val twice = Trigger.Random(timesPer = 2, period = Period.WEEK, from = LocalTime.of(9, 0), to = LocalTime.of(21, 0))
+        val rule = TriggerRule(twice, listOf(Condition.OnMonthDays(setOf(15))))
+        for (month in 1..12) {
+            val before = LocalDate.of(2027, month, 1).atStartOfDay(zone).toInstant()
+            val next = nextFireOfRule(rule, "r1", before, zone, Fixtures.defaultTime)!!.moment!!
+            assertEquals(LocalDate.of(2027, month, 15), next.atZone(zone).toLocalDate(), "month $month")
+        }
+        // With no day fences, the draw is the one it always was.
+        assertEquals(
+            RandomDraw.draws(twice, "r1", RandomDraw.periodIndex(LocalDate.of(2027, 3, 15), Period.WEEK), zone),
+            RandomDraw.draws(twice, "r1", RandomDraw.periodIndex(LocalDate.of(2027, 3, 15), Period.WEEK), zone, emptyList(), emptyList()),
+        )
+    }
 }

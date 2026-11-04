@@ -389,7 +389,7 @@ fun SettingsScreen(
                 RwilcoCard {
                     Column(Modifier.padding(spacing.lg), verticalArrangement = Arrangement.spacedBy(spacing.lg)) {
                         Column {
-                            SettingTitle(stringResource(R.string.settings_default_time))
+                            SettingTitle(title = stringResource(R.string.settings_default_time), info = stringResource(R.string.settings_default_time_hint))
                             Spacer(Modifier.height(spacing.sm))
                             TimeField(time = current.defaultTime, onChange = viewModel::setDefaultTime, modifier = Modifier.fillMaxWidth())
                         }

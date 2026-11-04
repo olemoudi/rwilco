@@ -625,7 +625,7 @@
     <string name="countdown_zero_error">Un plazo de cero no es un plazo: un minuto al menos.</string>
     <string name="random_window_error">La franja necesita un minuto por sorteo.</string>
     <string name="random_days_label">Días</string>
-    <string name="random_days_hint">Todos los días si no marcas ninguno.</string>
+    <string name="random_days_hint">Cualquier día de la semana si no marcas ninguno.</string>
     <string name="place_label">Nombre del lugar</string>
     <string name="place_label_hint">Casa, trabajo, el gimnasio…</string>
     <string name="place_no_fix">No se pudo obtener la ubicación. Comprueba que está activada y permitida.</string>
@@ -832,7 +832,8 @@
     <string name="settings_theme_system">Sistema</string>
     <string name="settings_theme_light">Claro</string>
     <string name="settings_theme_dark">Oscuro</string>
-    <string name="settings_default_time">Hora de los recordatorios de solo fecha</string>
+    <string name="settings_default_time">Hora propuesta para una fecha</string>
+    <string name="settings_default_time_hint">La que aparece al elegir una fecha con hora, y a la que suena cada día de un «del … al …». Un día «a cualquier hora» suena al empezar tu día, no a ésta.</string>
     <string name="settings_haptics_system_off">La vibración al tocar de Android está apagada, así que aquí no puede vibrar nada.</string>
     <string name="settings_haptics_system_fix">Abrir</string>
     <string name="settings_haptics">Vibración al tocar</string>
@@ -1855,6 +1856,13 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_204_0">
+
+        <item>«Dos veces por semana, y sólo el día 15» sortea sus momentos en el día 15, así que suena cada mes y no sólo cuando el azar caía en él.</item>
+
+        <item>Ajustes explica qué hacen de verdad «Tu día» y la hora propuesta para una fecha, y «Cualquier día de la semana si no marcas ninguno» sustituye a un «todos los días» que no era cierto con condiciones de días.</item>
+
+    </string-array>
     <string-array name="whats_new_0_203_0">
 
         <item>«Y sólo si voy andando» ya acepta un paso normal, y la velocidad se mide justo después de cruzar la línea, no con la media de la última media hora.</item>
@@ -3230,7 +3238,7 @@
     <string name="sheet_repeat_monthly_nth">Un día de la semana</string>
     <string name="sheet_repeat_every_value">%1$d</string>
     <string name="settings_awake">Tus horas despierto</string>
-    <string name="settings_awake_hint">De aquí sale la hora cuando un disparador dice «al azar durante el día» — y son las horas en que algo puede hacer ruido. Un disparador con hora propia sigue sonando a su hora; fuera de estas, llega en silencio.</string>
+    <string name="settings_awake_hint">Cuándo empieza y acaba tu día. Un día «a cualquier hora» suena al empezar tu día; «mañana por la mañana», o una fecha sin hora, que te pillarían durmiendo pasan a tu hora de levantarte; y hasta la mitad de la noche, «mañana» sigue siendo el día que empieza al despertarte. Fuera de estas horas, lo que tiene hora propia suena a su hora, pero en silencio.</string>
     <string name="settings_awake_weekday">Entre semana</string>
     <string name="settings_awake_weekend">Fines de semana</string>
     <string name="settings_awake_wake">Te levantas a las</string>

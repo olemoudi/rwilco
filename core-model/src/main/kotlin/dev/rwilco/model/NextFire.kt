@@ -231,10 +231,12 @@ fun nextFireOfRule(
     var after = now
     val horizon = now + SEARCH_HORIZON
     // The rule's own hour fences reach the opening, so a day with no hour opens at the first
-    // minute they allow instead of being rejected below (see openingOf).
+    // minute they allow instead of being rejected below (see openingOf) — and its day fences
+    // reach a random draw, which is made on the days they allow (RandomDraw.draws).
     val windows = rule.windows()
+    val dayFences = fences.filter { it is Condition.OnDays || it is Condition.OnMonthDays || it is Condition.DateRange }
     repeat(MAX_CANDIDATES) {
-        val candidate = nextFireOf(rule.trigger, reminderId, after, zone, defaultTime, shape, windows) ?: return null
+        val candidate = nextFireOf(rule.trigger, reminderId, after, zone, defaultTime, shape, windows, dayFences) ?: return null
         val at = when (candidate) {
             is NextFire.Scheduled -> candidate.at
             is NextFire.Sometime -> candidate.at
@@ -320,6 +322,8 @@ fun nextFireOf(
     defaultTime: LocalTime,
     shape: DayShape = DayShape.DEFAULT,
     fences: List<Condition.TimeWindow> = emptyList(),
+    /** Day fences, which only a random draw reaches: see [RandomDraw.draws]. */
+    dayFences: List<Condition> = emptyList(),
 ): NextFire? =
     when (trigger) {
         // atZone resolves a wall time that does not exist (a DST gap) forward, and one that
@@ -395,7 +399,7 @@ fun nextFireOf(
         is Trigger.Location -> NextFire.WhenAt(trigger)
         // Drawn inside the rule's hour fences, like the two shapes above that leave the hour
         // to the day (see RandomDraw.draws).
-        is Trigger.Random -> nextRandom(trigger, reminderId, now, zone, fences)
+        is Trigger.Random -> nextRandom(trigger, reminderId, now, zone, fences, dayFences)
     }
 
 private fun Instant.future(now: Instant): Instant? = takeIf { it > now }
@@ -508,6 +512,7 @@ private fun nextRandom(
     now: Instant,
     zone: ZoneId,
     fences: List<Condition.TimeWindow> = emptyList(),
+    days: List<Condition> = emptyList(),
 ): NextFire.Sometime? {
     val today = now.atZone(zone).toLocalDate()
     val first = RandomDraw.periodIndex(today, trigger.period)
@@ -515,11 +520,11 @@ private fun nextRandom(
     if (dates.size > 1) return null
     val periods = when {
         dates.isNotEmpty() -> listOf(RandomDraw.periodIndex(dates.single(), trigger.period))
-        fences.isEmpty() -> first until first + (if (trigger.period == Period.DAY) 8 else 2)
+        fences.isEmpty() && days.isEmpty() -> first until first + (if (trigger.period == Period.DAY) 8 else 2)
         else -> first until first + (if (trigger.period == Period.DAY) 400 else 60)
     }
     for (index in periods) {
-        val draws = RandomDraw.draws(trigger, reminderId, index, zone, fences)
+        val draws = RandomDraw.draws(trigger, reminderId, index, zone, fences, days)
         val at = draws.firstOrNull { it > now } ?: continue
         // A window that crosses midnight puts its small-hours draws on the next calendar day;
         // the window they were drawn from is the one that opened the evening before.

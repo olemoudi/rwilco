@@ -4351,6 +4351,15 @@ loud what DST and a change of zone do to a landing.
   turns a moment into a state or back asks the match again (`commitTrigger`'s `flipped`); the
   deadline sheet says a plazo with no "Vuelve" ends there. Tests: `CombinationContractTest`,
   `EditorContractTest`.
+- **The trigger-contract round, 4: a draw on its days, and the settings' words** (0.204.0,
+  2026-11-04). A random draw is made on the days its rule's day fences allow (`RandomDraw.draws`'s
+  `days`, reached through `nextFireOf`'s `dayFences` from `nextFireOfRule`; `nextRandom` scans a
+  year of periods when there are any): "dos veces por semana, y sólo el día 15" drew from the
+  whole week and rang on the 15th about one month in four. With no day fences the draw is,
+  to the bit, the one it was. "Tu día" and the default hour are described as what they do now
+  (`settings_awake_hint`, `settings_default_time` + its hint), and the days hint says "cualquier
+  día de la semana". The audit's probe file (`AuditProbeTest`) was never committed; every claim it
+  confirmed is a regression test in the files the four rounds name.
 
 ## Backup (the vault)
 

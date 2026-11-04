@@ -44,8 +44,16 @@ object RandomDraw {
         periodIndex: Long,
         zone: ZoneId,
         fences: List<Condition.TimeWindow> = emptyList(),
+        /**
+         * The rule's day fences — days of the week, days of the month, a stretch of dates —
+         * which a draw is made on, never judged against afterwards (2026-11-04): "dos veces por
+         * semana, y sólo el día 15" drew its two days from the whole week and rang on the 15th
+         * only when chance put one there, about one month in four.
+         */
+        days: List<Condition> = emptyList(),
     ): List<Instant> {
         val windowMinutes = windowMinutes(trigger)
+        fun dayAllowed(date: LocalDate): Boolean = days.all { it.holdsAt(date.atTime(trigger.from).atZone(zone).toInstant(), zone) }
         if (windowMinutes <= 0 || trigger.timesPer <= 0) return emptyList()
         val rng = SplitMix64(seed(reminderId, periodIndex, trigger.period))
         // The minutes of the window on [day] that every fence allows: all of them with none.
@@ -63,7 +71,7 @@ object RandomDraw {
         return when (trigger.period) {
             Period.DAY -> {
                 val date = LocalDate.ofEpochDay(periodIndex)
-                if (!eligible(date, trigger.days)) return emptyList()
+                if (!eligible(date, trigger.days) || !dayAllowed(date)) return emptyList()
                 val minutes = allowed(date)
                 if (minutes.isEmpty()) return emptyList()
                 val offsets = List(drawCount(trigger, minutes.size)) { rng.nextInt(minutes.size) }.sorted()
@@ -72,7 +80,7 @@ object RandomDraw {
             Period.WEEK -> {
                 val monday = weekStart(periodIndex)
                 val eligibleDays = (0L..6L).map { monday.plusDays(it) }
-                    .filter { eligible(it, trigger.days) }
+                    .filter { eligible(it, trigger.days) && dayAllowed(it) }
                     .associateWith { allowed(it) }
                     .filterValues { it.isNotEmpty() }
                 if (eligibleDays.isEmpty()) return emptyList()

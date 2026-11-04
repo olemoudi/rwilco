@@ -632,7 +632,7 @@
     <string name="countdown_zero_error">A countdown of nothing is not a countdown: a minute at least.</string>
     <string name="random_window_error">The window needs a minute per draw.</string>
     <string name="random_days_label">Days</string>
-    <string name="random_days_hint">Every day unless you pick some.</string>
+    <string name="random_days_hint">Any day of the week unless you pick some.</string>
     <string name="place_label">Place name</string>
     <string name="place_label_hint">Home, work, the gym…</string>
     <string name="place_no_fix">Could not get a location. Check location is on and allowed.</string>
@@ -843,7 +843,8 @@
     <string name="settings_theme_system">System</string>
     <string name="settings_theme_light">Light</string>
     <string name="settings_theme_dark">Dark</string>
-    <string name="settings_default_time">Time for date-only reminders</string>
+    <string name="settings_default_time">Suggested hour for a date</string>
+    <string name="settings_default_time_hint">The hour a date with an hour starts from, and the one each day of a «from … to …» rings at. A day «at any time» rings as your day starts, not at this one.</string>
     <string name="settings_haptics_system_off">Android’s own touch feedback is off, so nothing here can vibrate.</string>
     <string name="settings_haptics_system_fix">Open</string>
     <string name="settings_haptics">Vibration on touch</string>
@@ -1870,6 +1871,13 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_204_0">
+
+        <item>«Twice a week, only on the 15th» draws its moments on the 15th, so it rings every month instead of only when chance landed there.</item>
+
+        <item>Settings says what «Your day» and the suggested hour for a date actually do, and «Any day of the week unless you pick some» replaces an «every day» that was not true with day conditions.</item>
+
+    </string-array>
     <string-array name="whats_new_0_203_0">
 
         <item>«Only if I\'m walking» now accepts a normal pace, and the speed is measured just after you cross the line, not averaged over the last half hour.</item>
@@ -3245,7 +3253,7 @@
     <string name="sheet_repeat_monthly_nth">A weekday</string>
     <string name="sheet_repeat_every_value">%1$d</string>
     <string name="settings_awake">The hours you are up</string>
-    <string name="settings_awake_hint">What “at random during the day” draws from — and the hours anything is allowed to make a noise in. A trigger with an hour of its own still rings at that hour; outside these, it arrives silent.</string>
+    <string name="settings_awake_hint">When your day starts and ends. A day «at any time» rings as your day starts; «tomorrow morning», or a date with no hour, that would find you asleep moves to the hour you get up; and until halfway through the night, «tomorrow» is still the day you wake up to. Outside these hours, anything with an hour of its own rings at that hour, but silently.</string>
     <string name="settings_awake_weekday">Weekdays</string>
     <string name="settings_awake_weekend">Weekends</string>
     <string name="settings_awake_wake">Up at</string>
