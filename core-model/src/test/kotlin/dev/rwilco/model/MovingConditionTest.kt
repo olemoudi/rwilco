@@ -187,8 +187,11 @@ class MovingConditionTest {
         assertEquals(mapOf(leaving.id to now), crossing.state.timing)
         assertEquals(PlaceWatchPolicy.SPEED_LOOK, crossing.plan!!.wait)
         assertNull(crossing.state.lastFix!!.speedMps)
-        // A rest is never taken over it: the look it waits for is a fresh one.
+        // A rest is never taken over it: the look it waits for is a fresh one. Nor over one a
+        // rest would find — a state asked afresh, read off the stored fix — for the same reason.
         assertNull(stepWithoutLooking(crossing.state.copy(stillStreak = 3), listOf(leaving), now.plusSeconds(90), sensed = false))
+        val away = leaving.copy(id = "r2#0", onCrossing = false)
+        assertNull(stepWithoutLooking(PlaceWatchState(lastFix = north(400.0, now.minusSeconds(600)), stillStreak = 3), listOf(away), now, sensed = false))
 
         // Driven away: 900 m in the ninety seconds after. Handed on, with a car's speed to read.
         val later = now.plus(PlaceWatchPolicy.SPEED_LOOK)

@@ -1422,7 +1422,8 @@ fun stepWithoutLooking(
     // circle with no side yet: a state reopened after a rest or its gate (0.172.0) is judged
     // afresh, and found home it is news. Rested, that news was written down as the side and
     // thrown away with the rest of the step. The look is taken instead, and rings off that.
-    if (step.events.isNotEmpty()) return null
+    // A crossing held to be timed is something found too: the look it waits for is a fresh one.
+    if (step.events.isNotEmpty() || step.timed.isNotEmpty()) return null
     val wait = step.plan?.wait ?: return null
     if (Duration.between(fix.at, now + wait) > PlaceWatchPolicy.SPEED_MEMORY) return null
     return step
