@@ -821,6 +821,14 @@ val WatchedPlace.ringsOnPassing: Boolean
     get() = transition == Transition.ENTER && crossing == Crossing.RINGS && dwell == null
 
 /**
+ * A doorway that rings and asks for no stay: the one listener whose crossing is held for its gate
+ * ([stepPlaceWatch], 2026-11-04). A rate cannot be counted by a circle that only listens, and the
+ * other crossings (a tick taken back, a routine's) are not rings to be owed.
+ */
+val WatchedPlace.listensForTheDoor: Boolean
+    get() = crossing == Crossing.RINGS && onCrossing && dwell == null
+
+/**
  * The floor under the next look: [PlaceWatchPolicy.MIN_WAIT], unless the phone is walking up to
  * a circle too small for it (0.199.0).
  *
@@ -1014,7 +1022,9 @@ data class PlaceWatchState(
     /**
      * Rates met before their rule's hours, by circle: when each was met. A rate says "at least",
      * so a stay met at 18:55 is still met at 19:00 if nobody has left — see [stepPlaceWatch].
-     * Empty on every blob written before holds existed, which is what it reads back as.
+     * And sides reached early (states and, since 2026-11-04, doorways, also while their circle only
+     * listens), by the same reading. Empty on every blob written before holds existed, which is
+     * what it reads back as.
      */
     val held: Map<String, Instant> = emptyMap(),
     /**
@@ -1288,7 +1298,20 @@ fun stepPlaceWatch(
     // held for them, rather than handed to a firing that drops it as early and never sees it again.
     val (thereEarly, crossedNow) = crossed.filter { it.dwell == null }.partition { it.ringsFrom?.isAfter(now) == true }
     val (waiting, released) = stays.partition { it.ringsFrom?.isAfter(now) == true }
-    val held = waiting.associate { it.id to state.held.getValue(it.id) } + (early + thereEarly).associate { it.id to now }
+    // **A doorway crossed while it only listens is held for its gate** (2026-11-04, the owner's
+    // call). "Al llegar a casa, y vuelve cada 24 h desde el hecho": home during the rest and still
+    // there when it ended was no news at all — the side had been written down on the way past
+    // and the gate opened onto nothing to report (audit probe P5). The same for an arrival before
+    // the run-up to a doorway's hours. So a ringing doorway seen crossing while gated keeps the
+    // moment, and the first look that asks for it again hands it on if the phone is still on that
+    // side — the release is the ordinary one below, once the circle is in [places]. Only a doorway
+    // seen on the other side first, as for any crossing; not a rate, which a listener cannot count.
+    val listenedIn = listening.filter { it.listensForTheDoor }.filter { place ->
+        val wants = place.transition == Transition.ENTER
+        inside[place.id] == wants && (place.id in state.held || state.inside[place.id] == !wants)
+    }
+    val held = waiting.associate { it.id to state.held.getValue(it.id) } + (early + thereEarly).associate { it.id to now } +
+        listenedIn.associate { it.id to (state.held[it.id] ?: now) }
     // **A speed is only worth the two looks it came from** (2026-11-04). The fence "y sólo si voy
     // en coche" was read off the average since the last look, which inside a place is half an
     // hour of it and most of that on the sofa. Over [PlaceWatchPolicy.FENCE_SPAN] nobody knows.

@@ -231,4 +231,85 @@ class PlaceHoldTest {
         state = phoneLook(state, 900.0, wed(18, 58)).state
         assertTrue(phoneLook(state, 900.0, opening).events.isEmpty())
     }
+
+    // ---- a doorway's arrival held for its gate (2026-11-04, the owner's call) ---------------
+
+    /** One look as the phone takes it, for any set of reminders: every gate, then the step. */
+    private fun lookAt(state: PlaceWatchState, metres: Double, at: Instant, vararg reminders: Reminder): WatchStep {
+        val circles = reminders.flatMap { it.watchedCircles(at, zone, Fixtures.defaultTime) }
+        return stepPlaceWatch(
+            state, north(metres, at), circles.filter { it.opensAt == null }.map { it.place }, at,
+            listening = circles.filter { it.listens }.map { it.place },
+        )
+    }
+
+    private val door = Trigger.Location(homeLat, homeLng, radiusM = 200, presence = Presence.INSIDE, label = "Casa", onCrossing = true)
+
+    /** Thursday 2026-08-27. */
+    private fun thu(hour: Int, minute: Int = 0): Instant = local(2026, 8, 27, hour, minute)
+
+    @Test
+    fun `a doorway with hours, arrived at before they open, rings when they do`() {
+        // Audit probe P2: "al llegar a casa, y sólo si de 18 a 22", home at half past five. The
+        // arrival used to be reported at 17:30, dropped by its hours, and that was the evening.
+        val evening = Reminder(
+            id = "r1", text = "x", rules = listOf(TriggerRule(door, listOf(Condition.TimeWindow(LocalTime.of(18, 0), LocalTime.of(22, 0))))),
+            createdAt = thu(12), updatedAt = thu(12),
+        )
+        val away = lookAt(PlaceWatchState(), 900.0, thu(17), evening)
+        val arrived = lookAt(away.state, 10.0, thu(17, 30), evening)
+        assertTrue(arrived.events.isEmpty(), "not before six")
+        assertEquals(thu(17, 30), arrived.state.held.values.single())
+        assertEquals(thu(18), arrived.heldUntil)
+        val six = lookAt(arrived.state, 10.0, thu(18), evening)
+        assertEquals(1, six.events.size, "six o'clock with the phone still at home")
+        assertTrue(lookAt(six.state, 10.0, thu(20), evening).events.isEmpty(), "and once")
+        // The firing takes it: the hours hold at six.
+        assertNotNull(Simulation(evening, thu(18)).arrive(0))
+        // Gone again before six: somebody who left has to arrive again.
+        val left = lookAt(arrived.state, 900.0, thu(17, 50), evening)
+        assertTrue(left.state.held.isEmpty())
+        assertTrue(lookAt(left.state, 900.0, thu(18), evening).events.isEmpty())
+    }
+
+    /** "Al llegar a casa, y vuelve cada 24 h desde el hecho", dealt with on Monday at seven. */
+    private val resting = Reminder(
+        id = "r1", text = "x", rules = listOf(TriggerRule(door)),
+        recurrence = Recurrence.After(24, RecurrenceUnit.HOURS),
+        lastFiredAt = local(2026, 8, 31, 18, 55), lastFiredRule = 0, lastDealtAt = local(2026, 8, 31, 19, 0),
+        createdAt = local(2026, 8, 30, 12, 0), updatedAt = local(2026, 8, 31, 19, 0),
+    )
+
+    @Test
+    fun `a doorway arrived at during its rest rings when the rest ends, if still there`() {
+        // Audit probe P5: out at five, home at a quarter to seven while it rests until seven on
+        // Tuesday, and still home. The circle only listens until then, and what it heard was
+        // written down as the side — so the end of the rest had nothing to report.
+        val five = local(2026, 9, 1, 17, 0)
+        val away = lookAt(PlaceWatchState(), 900.0, five, resting)
+        assertEquals(false, away.state.inside.values.single(), "told which side it is on, on the way past")
+        val quarterTo = local(2026, 9, 1, 18, 45)
+        val arrived = lookAt(away.state, 10.0, quarterTo, resting)
+        assertTrue(arrived.events.isEmpty(), "a listener reports nothing")
+        assertEquals(quarterTo, arrived.state.held.values.single(), "and keeps the arrival for the gate")
+        val seven = local(2026, 9, 1, 19, 0)
+        val open = lookAt(arrived.state, 10.0, seven, resting)
+        assertEquals(1, open.events.size, "the rest is over and the phone is home")
+        assertTrue(open.state.held.isEmpty())
+        assertTrue(lookAt(open.state, 10.0, local(2026, 9, 1, 19, 30), resting).events.isEmpty())
+        assertNotNull(Simulation(resting, seven).arrive(0), "and the firing rings it")
+    }
+
+    @Test
+    fun `a doorway arrived at during its rest and left again owes nothing`() {
+        val away = lookAt(PlaceWatchState(), 900.0, local(2026, 9, 1, 17, 0), resting)
+        val arrived = lookAt(away.state, 10.0, local(2026, 9, 1, 17, 30), resting)
+        val left = lookAt(arrived.state, 900.0, local(2026, 9, 1, 18, 30), resting)
+        assertTrue(left.state.held.isEmpty(), "somebody who left has to arrive again")
+        assertTrue(lookAt(left.state, 900.0, local(2026, 9, 1, 19, 0), resting).events.isEmpty())
+        // Nor does a side nobody saw the other side of: first heard at home is a baseline.
+        val baseline = lookAt(PlaceWatchState(), 10.0, local(2026, 9, 1, 18, 45), resting)
+        assertTrue(baseline.state.held.isEmpty())
+        assertTrue(lookAt(baseline.state, 10.0, local(2026, 9, 1, 19, 0), resting).events.isEmpty())
+    }
 }
