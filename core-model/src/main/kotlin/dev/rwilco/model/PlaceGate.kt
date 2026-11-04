@@ -181,8 +181,19 @@ fun Reminder.watchedCircles(
             return@flatMapIndexed emptyList()
         }
         val fold = folded[index]
-        // When its own hours and, folded in, its siblings' next all hold: now, when they do.
-        val hoursOpen = if (place != null) (fold ?: rule).windows().openFrom(now, zone) else null
+        // **Where nothing else in the set will ask at the opening, the circle waits for it itself**
+        // (2026-11-04). Alone, under "cualquiera", and under "todos" — where the fold adds nothing
+        // but the plazo's hours — the rule's own fences are the only clock it has, so whatever
+        // happens before they open is held for them ([WatchedPlace.ringsFrom]). Under "a la vez" a
+        // sibling's own moment asks about the place, and the circle is left as it was.
+        val ownClock = fold == rule || accumulates
+        // When its own hours and, folded in, its siblings' next all hold: now, when they do. Where
+        // it is its own clock, its days too ([fencesOpenFrom]): a state fenced to the 1st, home
+        // since the evening before, rings when the 1st opens.
+        val hoursOpen = if (place != null) {
+            val fenced = fold ?: rule
+            if (ownClock) fenced.fencesOpenFrom(now, zone, shape) else fenced.windows().openFrom(now, zone)
+        } else null
         val gate: Instant? = if (place != null) {
             // Its own hours and, folded in, its siblings'. A fold that comes back null is a
             // crossing that can never ring — the circle is still watched, quietly, because a
@@ -242,9 +253,14 @@ fun Reminder.watchedCircles(
                     // home at eight, and "mientras esté en casa, y sólo si es de 20 a 22" has
                     // nothing else to ask at eight. Only where folding leaves the rule as it is:
                     // under "a la vez" a sibling window's own opening asks about the place.
-                    ringsFrom = hoursOpen?.takeIf { opening ->
-                        rings && opening > now && (it.dwell != null || (!it.onCrossing && fold == rule))
-                    },
+                    //
+                    // **And a doorway** (2026-11-04, the owner's call): "al llegar a casa, y sólo
+                    // si es de 18 a 22", arrived at half past five and still there at six, rang
+                    // nothing that evening — the arrival was judged early and dropped, and a
+                    // doorway is crossed once. **And under "todos"**, where the fold is the rule
+                    // and the plazo's hours: home since three with the window from six was
+                    // emitted at four, dropped by the window and never ticked (audit probe C1).
+                    ringsFrom = hoursOpen?.takeIf { opening -> rings && opening > now && (it.dwell != null || ownClock) },
                     // "Y sólo si voy en coche": a crossing waits for a look that can say (2026-11-04).
                     timesSpeed = rings && (fold ?: rule).conditions.any { condition -> condition is Condition.Moving },
                 ),
@@ -380,6 +396,40 @@ private fun Reminder.routineCircles(
         listOfNotNull(trigger) + asked
     }
 }
+
+/**
+ * When everything a clock can say about this rule's fences next holds — its hours and its days:
+ * [now] when it already does, null when it never will again (2026-11-04).
+ *
+ * Hours open at their own hour ([openFrom]). A day — "y sólo el día 1", "y sólo los viernes", "y
+ * sólo del 1 al 15" — opens when the person's day does ([DayShape.awakeOn]), as a day with no hour
+ * of its own always has (`Trigger.Weekday` rings at that opening, and so does `Trigger.DayRandom`):
+ * a state fenced to the 1st that opened at midnight would ring in the small hours, hushed, and
+ * have spent its ring by breakfast. Days and hours together open at the first opening of the hours
+ * on a day the days allow.
+ */
+fun TriggerRule.fencesOpenFrom(now: Instant, zone: ZoneId, shape: DayShape = DayShape.DEFAULT): Instant? {
+    val windows = windows()
+    val days = conditions.filter { it is Condition.OnDays || it is Condition.OnMonthDays || it is Condition.DateRange }
+    if (days.isEmpty()) return windows.openFrom(now, zone)
+    var date = now.atZone(zone).toLocalDate()
+    val last = date.plusDays(DAY_FENCE_HORIZON_DAYS)
+    while (!date.isAfter(last)) {
+        // A day fence is about the date and nothing else, so its start answers for all of it.
+        if (!days.allHoldAt(date.atStartOfDay(zone).toInstant(), zone)) {
+            date = date.plusDays(1)
+            continue
+        }
+        if (windows.isEmpty()) return maxOf(now, shape.awakeOn(date).from.atZone(zone).toInstant())
+        val opening = windows.openFrom(maxOf(now, date.atStartOfDay(zone).toInstant()), zone) ?: return null
+        if (days.allHoldAt(opening, zone)) return opening
+        date = maxOf(date.plusDays(1), opening.atZone(zone).toLocalDate())
+    }
+    return null
+}
+
+/** How far ahead a day fence is looked for: three years, past any stretch of dates anybody writes. */
+private const val DAY_FENCE_HORIZON_DAYS = 1_100L
 
 /** Whether rule [index]'s own circle is being watched right now — what a card's mark says. */
 fun List<Gated>.watchingRule(index: Int): Boolean =
