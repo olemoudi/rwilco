@@ -59,6 +59,7 @@ import dev.rwilco.model.sideOf
 import dev.rwilco.model.speaksFor
 import dev.rwilco.model.speedUnvouched
 import dev.rwilco.model.presenceAlreadyRang
+import dev.rwilco.model.stretchOwed
 import dev.rwilco.model.rulesCombine
 import dev.rwilco.model.statusAfterDismissal
 import dev.rwilco.notify.AlertNotifications
@@ -134,8 +135,20 @@ class ReminderFiring(
      * [ruleIndex] says which rule rang, which is what lets a place be judged against the
      * conditions on it ("al llegar a casa, y sólo si es por la tarde"). An alarm needs no such
      * check: the moment it was armed for already satisfied them.
+     *
+     * [viaCondition] is the watch finding the phone where an open stretch's "y sólo si…" asks it to
+     * be ("de 18 a 20, y sólo si estoy en casa", home at half past six): rule [ruleIndex] rung by
+     * its place condition's circle, an event like a place's own, while the stretch is open and owed
+     * its ring ([stretchOwed], 2026-11-04).
      */
-    suspend fun fire(id: String, late: Instant? = null, ruleIndex: Int? = null, viaSnoozePlace: Boolean = false, announced: Boolean = false) = lock.withLock {
+    suspend fun fire(
+        id: String,
+        late: Instant? = null,
+        ruleIndex: Int? = null,
+        viaSnoozePlace: Boolean = false,
+        announced: Boolean = false,
+        viaCondition: Boolean = false,
+    ) = lock.withLock {
         val reminder = repository.get(id) ?: return@withLock Diag.note(TAG_DIAG, "r=${short(id)} gone")
         if (reminder.status != Status.ACTIVE) return@withLock Diag.note(TAG_DIAG, "r=${short(id)} not active (${reminder.status})")
         // The crossing a "cuando llegue a…" waits for. A fence outlives the snooze it was set
@@ -174,7 +187,7 @@ class ReminderFiring(
         // for ever, with the next one never armed. Only the moment this delivery is about, and
         // never for a place: a place has no armed moment of its own, and the one on the row
         // belongs to whatever else the reminder is waiting for.
-        val eventDriven = rule?.trigger is Trigger.Location || viaSnoozePlace
+        val eventDriven = rule?.trigger is Trigger.Location || viaSnoozePlace || viaCondition
         suspend fun spendArmed() {
             val armedNow = reminder.armedFor ?: return
             if (!eventDriven && armedNow <= now.plusSeconds(EARLY_GRACE_SECONDS)) repository.setArmedFor(id, null, null)
@@ -199,7 +212,14 @@ class ReminderFiring(
             scheduler.rearmAll()
             return@withLock
         }
-        val failed = judged?.let { firstFailing(it.conditions, askAll = it.trigger is Trigger.Location, now, moment = late ?: now) }
+        // A stretch's place rings once, while the stretch is open: past it, rung or dealt with
+        // since it opened, the watch's word is about a round that has had its say.
+        if (viaCondition && (ruleIndex == null || reminder.stretchOwed(ruleIndex, now, clock.zone, settings.defaultTime, settings.dayShape) == null)) {
+            Diag.note(TAG_DIAG, "r=${short(id)} dropped: rule $ruleIndex's stretch is shut or has had its say")
+            scheduler.rearmAll()
+            return@withLock
+        }
+        val failed = judged?.let { firstFailing(it.conditions, askAll = it.trigger is Trigger.Location || viaCondition, now, moment = late ?: now) }
         if (failed != null) {
             Log.i(TAG, "$id came round outside what its rule asks for")
             // **Which** condition, not just that one of them said no (0.78.0). "conditions of
@@ -346,7 +366,7 @@ class ReminderFiring(
         // ring on time" note — and quietly, without the screen: it has made its noise once.
         val plan = if (reminder.isContact) CONTACT_PLAN
         else firingPlan(reminder.actions).let { if (asleep) it.hushed() else it }.let { if (announced) it.hushed().copy(fullScreen = false) else it }
-        Diag.note(TAG_DIAG, "r=${short(id)} RANG for $rangFor rule=$ruleIndex${if (late != null) " (late for $late)" else ""}${if (viaSnoozePlace) " (place snooze)" else ""} plan=${plan.summary()}")
+        Diag.note(TAG_DIAG, "r=${short(id)} RANG for $rangFor rule=$ruleIndex${if (late != null) " (late for $late)" else ""}${if (viaSnoozePlace) " (place snooze)" else ""}${if (viaCondition) " (its place, in the stretch)" else ""} plan=${plan.summary()}")
         // From the sello to the screen in one piece: the receiver runs this under a timeout, and
         // a cancellation landing between markFired and show spent a moment nothing ever showed
         // — one missedFire could never see again, because the row said it had rung.

@@ -754,6 +754,9 @@ class PlaceWatcher(
                         firing.resetBy(reminderId, ruleIndex)
                     } else if (GeofenceIds.isSnooze(event.placeId)) {
                         firing.fire(reminderId, viaSnoozePlace = true)
+                    } else if (GeofenceIds.conditionRuleOf(event.placeId) != null) {
+                        // An open stretch's "y sólo si estoy en…", met (2026-11-04): the rule rings.
+                        firing.fire(reminderId, ruleIndex = GeofenceIds.conditionRuleOf(event.placeId), viaCondition = true)
                     } else {
                         firing.fire(reminderId, ruleIndex = ruleIndex)
                     }

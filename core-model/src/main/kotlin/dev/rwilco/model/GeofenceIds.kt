@@ -81,6 +81,12 @@ object GeofenceIds {
     fun triggerIndexOf(geofenceId: String): Int? =
         geofenceId.substringAfter(SEPARATOR, missingDelimiterValue = "").substringBefore(CIRCLE).toIntOrNull()
 
+    /** The rule a condition's circle belongs to ([encodeCondition]), or null for any other circle. */
+    fun conditionRuleOf(geofenceId: String): Int? {
+        val head = geofenceId.substringAfter(SEPARATOR, missingDelimiterValue = "").substringBefore(CIRCLE)
+        return if (CONDITION in head) head.substringBefore(CONDITION).toIntOrNull() else null
+    }
+
     /**
      * The geometry alone, without which side of it anybody is waiting for.
      *

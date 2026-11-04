@@ -225,4 +225,87 @@ class PlaceConditionTest {
         assertEquals(false, state.sideOf(atHome.lat, atHome.lng, atHome.radiusM, inside = false), "no entry of that side: whichever there is")
         assertEquals(false, state.sideOf(atHome.lat, atHome.lng, atHome.radiusM), "asked for no side in particular: as before")
     }
+
+    // ---- a stretch with a place in its fences rings while it is open (2026-11-04) ------------
+
+    private fun local(month: Int, day: Int, hour: Int, minute: Int = 0) = Fixtures.local(2026, month, day, hour, minute)
+
+    private fun row(rule: TriggerRule, createdAt: java.time.Instant = now) =
+        Reminder(id = "r1", text = "x", rules = listOf(rule), createdAt = createdAt, updatedAt = createdAt)
+
+    /** A fix [metresNorth] of home at [at]. */
+    private fun north(metresNorth: Double, at: java.time.Instant) = Fix(homeLat + metresNorth / 111_195.0, homeLng, accuracyM = 10.0, at = at)
+
+    private val stretch = row(TriggerRule(Trigger.Interval(LocalTime.of(18, 0), LocalTime.of(20, 0)), listOf(home)))
+
+    @Test
+    fun `a stretch with a place rings when the phone gets there while it is open`() {
+        // Audit probe T1: "de 18 a 20, y sólo si estoy en casa" was asked at six and at no other
+        // time — out at six, home at half past, nothing that day. The owner's call, 2026-11-04:
+        // while the stretch is open, getting there rings it, once.
+        val runUp = stretch.watchedCircles(local(8, 27, 17, 56), zone, defaultTime).single()
+        assertEquals(Crossing.NOTHING, runUp.place.crossing, "before it opens the clock asks, as always")
+        // Six: the alarm is dropped (out), and from then on the circle is a state that rings.
+        val six = local(8, 27, 18, 0)
+        val open = stretch.watchedCircles(six, zone, defaultTime).single()
+        assertNull(open.opensAt)
+        assertEquals(Crossing.RINGS, open.place.crossing)
+        assertFalse(open.place.onCrossing, "a state: being there is enough")
+        assertEquals(six, stretch.stretchOwed(0, local(8, 27, 18, 30), zone, defaultTime))
+        assertTrue(listOf(open).watchingRule(0), "and the card says it is being watched")
+        val away = stepPlaceWatch(PlaceWatchState(), north(900.0, six), listOf(open.place), six)
+        assertTrue(away.events.isEmpty())
+        val half = local(8, 27, 18, 30)
+        val home = stepPlaceWatch(away.state, north(10.0, half), listOf(stretch.watchedCircles(half, zone, defaultTime).single().place), half)
+        assertEquals(listOf(open.place.id), home.events.map { it.placeId })
+        assertEquals(0, GeofenceIds.conditionRuleOf(open.place.id))
+        // The firing takes it, once.
+        val phone = Simulation(stretch, half)
+        assertNotNull(phone.arriveAtCondition(0))
+        assertNull(phone.arriveAtCondition(0), "one ring a round")
+        val after = phone.reminder.watchedCircles(local(8, 27, 18, 45), zone, defaultTime).single()
+        assertEquals(Crossing.NOTHING, after.place.crossing, "rung: back to being asked at tomorrow's six")
+        assertEquals(local(8, 28, 18, 0).minus(PlaceWatchPolicy.ASK_LEAD), after.opensAt)
+        // And tomorrow is an ordinary day again: the alarm at six.
+        assertEquals(local(8, 28, 18, 0), phone.step()!!.at)
+    }
+
+    @Test
+    fun `a stretch that rang at its opening, or was dealt with, owes nothing more`() {
+        val half = local(8, 27, 18, 30)
+        val rang = stretch.copy(lastFiredAt = local(8, 27, 18, 0), lastFiredRule = 0)
+        assertNull(rang.stretchOwed(0, half, zone, defaultTime))
+        assertEquals(Crossing.NOTHING, rang.watchedCircles(half, zone, defaultTime).single().place.crossing)
+        assertNull(stretch.copy(lastDealtAt = local(8, 27, 18, 10)).stretchOwed(0, half, zone, defaultTime))
+        // Snoozed past it: the snooze rings, and the rules say nothing until it is over.
+        val snoozed = stretch.copy(snoozedUntil = local(8, 27, 19, 0))
+        assertEquals(Crossing.NOTHING, snoozed.watchedCircles(half, zone, defaultTime).single().place.crossing)
+        // Outside the stretch there is nothing to owe.
+        assertNull(stretch.stretchOwed(0, local(8, 27, 20, 30), zone, defaultTime))
+        assertNull(stretch.stretchOwed(0, local(8, 27, 17, 30), zone, defaultTime))
+        // A moment is not a stretch: "a las nueve, y sólo si estoy en casa" is asked at nine.
+        val nine = row(TriggerRule(Trigger.TimeOfDay(LocalTime.of(9, 0)), listOf(home)))
+        assertNull(nine.stretchOwed(0, local(8, 28, 9, 30), zone, defaultTime))
+        // And a stretch with no place in its fences has nothing for a circle to do.
+        assertNull(row(TriggerRule(Trigger.Interval(LocalTime.of(18, 0), LocalTime.of(20, 0)))).stretchOwed(0, local(8, 27, 18, 30), zone, defaultTime))
+    }
+
+    @Test
+    fun `a day with no hour and a place, missed at its opening, rings when the phone gets there`() {
+        // Audit probe T1: "el jueves, me da igual la hora, y sólo si estoy en la oficina". Out at
+        // the opening, and a day has nothing after its opening: it was lost for good.
+        val thursday = java.time.LocalDate.of(2026, 9, 3)
+        val day = row(TriggerRule(Trigger.DayRandom(thursday), listOf(office)), createdAt = local(8, 30, 12, 0))
+        val ten = local(9, 3, 10, 0)
+        assertEquals(local(9, 3, 8, 0), day.stretchOwed(0, ten, zone, defaultTime))
+        assertEquals(Crossing.RINGS, day.watchedCircles(ten, zone, defaultTime).single().place.crossing)
+        assertNotNull(Simulation(day, ten).arriveAtCondition(0))
+        // The day after, nothing is left: no circle at all.
+        assertTrue(day.watchedCircles(local(9, 4, 10, 0), zone, defaultTime).isEmpty())
+        // "Y sólo si NO estoy en casa" reads the same way from the other side.
+        val out = row(TriggerRule(Trigger.Interval(LocalTime.of(18, 0), LocalTime.of(20, 0)), listOf(home.copy(inside = false))))
+        val circle = out.watchedCircles(local(8, 27, 18, 30), zone, defaultTime).single().place
+        assertEquals(Crossing.RINGS, circle.crossing)
+        assertEquals(Transition.EXIT, circle.transition)
+    }
 }
