@@ -399,8 +399,8 @@
     <string name="trigger_weekends">fines de semana</string>
     <string name="trigger_arrive_at">al llegar a %1$s</string>
     <string name="trigger_leave_from">al salir de %1$s</string>
-    <string name="trigger_arrive_at_after">al llevar %2$s en %1$s</string>
-    <string name="trigger_leave_from_after">al llevar %2$s fuera de %1$s</string>
+    <string name="trigger_arrive_at_after">%2$s después de llegar a %1$s</string>
+    <string name="trigger_leave_from_after">%2$s después de salir de %1$s</string>
     <plurals name="trigger_times_a_day">
         <item quantity="one">%1$d vez al día</item>
         <item quantity="other">%1$d veces al día</item>
@@ -1061,7 +1061,7 @@
     <string name="place_kilometres">%1$s km</string>
 
     <!-- The place watch -->
-    <string name="place_watch_how">Rwilco también mira por su cuenta: cada par de minutos al acercarte andando a un lugar, cada media hora estando dentro de uno, cada hora parado al otro lado de la ciudad. GPS sólo cerca de un lugar y en movimiento; sólo las antenas cuando todo queda lejos; y nada en absoluto cuando la lectura que ya tiene sigue valiendo.</string>
+    <string name="place_watch_how">Rwilco también mira por su cuenta: cada par de minutos al acercarte andando a un lugar, cada media hora estando dentro de uno, cada hora parado al otro lado de la ciudad. Pasar andando por delante de un lugar pequeño cuenta como llegar; pasar en coche, no. Si una regla pregunta si vas andando o en coche, vuelve a mirar un minuto después de cruzar la línea. Con poca batería mira menos. El GPS, sólo cerca de un lugar y en movimiento.</string>
     <string name="place_watch_waiting">Todavía no ha mirado; la primera mirada llega en un momento.</string>
     <string name="place_watch_status">Última mirada %1$s · a %2$s de %3$s · próxima %4$s</string>
 
@@ -1375,8 +1375,8 @@
     <string name="place_while_outside">mientras no estoy</string>
     <string name="place_on_arrival">al llegar</string>
     <string name="place_on_leaving">al salir</string>
-    <string name="place_on_arrival_after">al llevar %1$s allí</string>
-    <string name="place_on_leaving_after">al llevar %1$s fuera</string>
+    <string name="place_on_arrival_after">%1$s después de llegar</string>
+    <string name="place_on_leaving_after">%1$s después de salir</string>
     <string name="place_side_inside">Mientras estoy</string>
     <string name="place_side_outside">Mientras no estoy</string>
     <string name="place_side_arriving">Al llegar</string>
@@ -1388,8 +1388,8 @@
     <string name="place_role_ask_hint">Una pregunta en la barra al cruzar la línea, con «sí, ahora» a un toque.</string>
     <string name="place_role_reset_hint">Cruzar la línea es el hecho mismo: salir del garaje es mover el coche. La cuenta vuelve a empezar sola, y un aviso discreto ofrece deshacerlo.</string>
     <string name="rule_resets">Cuenta como hecho</string>
-    <string name="place_means_inside">Basta con que estés allí: si ya estás cuando toque todo lo demás, suena.</string>
-    <string name="place_means_outside">Basta con que no estés allí: si ya estás fuera cuando toque todo lo demás, suena.</string>
+    <string name="place_means_inside">Basta con que estés allí: si ya estás cuando toque todo lo demás, suena. Y suena una vez: seguir allí no lo repite hasta que lo marques como hecho.</string>
+    <string name="place_means_outside">Basta con que no estés allí: si ya estás fuera cuando toque todo lo demás, suena. Y suena una vez: seguir fuera no lo repite hasta que lo marques como hecho.</string>
     <string name="place_means_arriving">Tiene que verte llegar. Si ya estás allí, espera a que salgas y vuelvas.</string>
     <string name="place_means_leaving">Tiene que verte salir. Si ya estás fuera, espera a que entres y vuelvas a salir.</string>
     <string name="place_dwell_inside">Y quedarme allí un rato</string>
