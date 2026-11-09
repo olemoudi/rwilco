@@ -856,8 +856,18 @@ fun Reminder.recurrenceMoment(
     // ever, armed for ever, and an alarm in the past arrives at once. That is not ringing twice,
     // it is ringing until somebody makes it stop. Once its moment has rung the answer is
     // nothing — Home files it under overdue — until dealing with it moves the anchor on.
-    val fired = lastFiredAt ?: return at
-    return at.takeIf { it > fired }
+    val fired = lastFiredAt
+    if (fired != null && at <= fired) return null
+    // **A moment that fell due during a pause is not owed** (2026-11-09, a beta tester's
+    // report). "Cada 3 h", paused and resumed the next day, counted from yesterday's "hecho":
+    // the alarm was armed in the past and rang the second the pause was lifted, and the next
+    // three hours only began once that stale ring was answered. Resuming starts the span again
+    // from the resume. A routine is not this: its pause freezes the count (the owner's call,
+    // `routineAnchorAfterPause`). A moment still ahead of the resume is kept, as a round's
+    // deadline is ([roundOnResume]).
+    val resumed = resumedAt
+    if (!isRoutine && resumed != null && at < resumed) return nextRecurrence(recurrence, resumed, zone, dayStart)
+    return at
 }
 
 /**

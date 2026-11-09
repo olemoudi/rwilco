@@ -668,6 +668,15 @@ hours span to the minute (the ring is written when the alarm *arrives*, a moment
 and `rulesLookFrom` looks from a breath before the rest, because the rules want moments strictly
 after where they start. "A las 9, y vuelve cada 24 h desde que suena" landed its rest exactly on
 nine — or just past it — and rang every other day.
+**A span's moment that fell due during a pause is not owed** (0.206.0, a beta tester's report):
+`recurrenceMoment` counts the span again from `resumedAt` when the moment it worked out is
+before the resume and was never rung. "Cada 3 h", done at noon, paused at one and resumed the
+next morning, used to arm yesterday's 15:00 — an alarm in the past, rung the second the pause
+was lifted — and only began the next three hours once that stale ring was answered. A moment
+still ahead of the resume is kept (as `roundOnResume` keeps a round whose deadline is still
+open), a ring left unanswered before the pause keeps waiting for its answer and comes back a span
+after the resume (`comeBackMoment`), a calendar already looked from now, and a routine is left
+out on purpose: its pause freezes the count. `ResumeSpanTest` pins all of it.
 `RecurrencePreset`s (in the settings, four built in unnamed) put the usual **spans** on buttons;
 a calendar is not one of them, because a calendar carries a `startsOn` that is that reminder's
 own. Room v4 added the boolean this replaced; v5 turns it into a shape (`by_trigger` for whatever

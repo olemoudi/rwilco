@@ -1871,6 +1871,12 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_206_0">
+
+        <item>Resuming a paused reminder that comes back every so often («every 3 h») starts it again from that moment: what fell due during the pause no longer rings the second you resume it, and it does not wait for a «done» before counting again. A moment still ahead is kept. Routines are unchanged: their pause freezes the count.</item>
+
+    </string-array>
+
     <string-array name="whats_new_0_205_0">
 
         <item>Fixed an alarm loop that drained the battery: a stretch or day saved while already open, with «only if I\'m at…» not met, kept re-arming itself. The same with a calendar coming back unanswered whose place was not met.</item>
