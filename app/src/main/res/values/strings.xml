@@ -1871,6 +1871,24 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_207_0">
+
+        <item>New since the last update. Resuming a paused reminder that comes back every so often («every 3 h») starts it again from that moment: it no longer rings at once for what fell due during the pause.</item>
+
+        <item>You can dictate reminders and routines: hold the microphone beside «New» and say what and when («call Marta tomorrow afternoon», «water the plants every 5 days»). It listens until you tap Done, understands corrections, and any word can be fixed with a tap. Gemini, optional and with your own key, for what it does not understand.</item>
+
+        <item>Snoozes your way: choose which buttons the alert shows, make your own («tonight», «Monday at 8»), and «Another time…» has the rest. A reminder that rang at a place can wait until «the next time I get to…».</item>
+
+        <item>The Done screen counts every «done»: streaks, achievements, how each repeating reminder is going, and now and then a word of encouragement (it can be turned off in Settings). A routine can be marked «I did it on time» or «I did it another day…».</item>
+
+        <item>Alerts: what is waiting for your answer comes first on Home; the volume keys silence a ringing alert; with headphones it rings in them for 10 s and then on the speaker; the insistent sound is set in Settings → Sound; with Android Auto it does not take over the phone\'s screen; and on a locked phone the screen goes back to sleep after a minute untouched.</item>
+
+        <item>Routines only ask «Have you done…?» in the last quarter of their span, and walking past a small place now rings its reminder.</item>
+
+        <item>The backup also carries the history, and its passphrase can be changed without the old one. The app is about 8 MB instead of 61. And a long reliability review: «Comes back», places, hours and days do what their sentence says.</item>
+
+    </string-array>
+
     <string-array name="whats_new_0_206_0">
 
         <item>Resuming a paused reminder that comes back every so often («every 3 h») starts it again from that moment: what fell due during the pause no longer rings the second you resume it, and it does not wait for a «done» before counting again. A moment still ahead is kept. Routines are unchanged: their pause freezes the count.</item>

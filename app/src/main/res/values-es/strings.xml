@@ -1856,6 +1856,24 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_207_0">
+
+        <item>Nuevo desde la última actualización. Reanudar un recordatorio en pausa que vuelve cada cierto tiempo («cada 3 h») lo empieza de nuevo desde ese momento: ya no suena al instante por lo que tocaba durante la pausa.</item>
+
+        <item>Puedes dictar recordatorios y rutinas: mantén pulsado el micrófono junto a «Nuevo» y di qué y cuándo («llamar a Marta mañana por la tarde», «regar las plantas cada 5 días»). Escucha hasta que pulsas Terminado, entiende las correcciones, y cualquier palabra se arregla tocándola. Gemini, si quieres y con tu propia clave, para lo que no entienda.</item>
+
+        <item>Posponer a tu manera: eliges qué botones enseña el aviso, puedes crear los tuyos («esta noche», «el lunes a las 8») y «A otro momento…» trae el resto. Lo que sonó en un sitio puede esperar a «la próxima vez que llegue a…».</item>
+
+        <item>Hechos cuenta cada «hecho»: rachas, logros, cómo va cada recordatorio que vuelve, y de vez en cuando una frase de ánimo (se apaga en Ajustes). Una rutina se puede marcar con «Lo hice a su hora» o «Lo hice otro día…».</item>
+
+        <item>Avisos: lo que espera tu respuesta sale lo primero en Home; las teclas de volumen silencian una alerta que suena; con auriculares suena en ellos 10 s y luego por el altavoz; el sonido insistente se ajusta en Ajustes → Sonido; con Android Auto no se queda con la pantalla del teléfono; y con el móvil bloqueado la pantalla vuelve a apagarse tras un minuto sin tocarla.</item>
+
+        <item>Las rutinas sólo preguntan «¿Has hecho…?» en el último cuarto del plazo, y pasar andando por un lugar pequeño ya hace sonar su recordatorio.</item>
+
+        <item>La copia de seguridad lleva también el historial, y su contraseña se puede cambiar sin la antigua. La app pesa unos 8 MB en vez de 61. Y una larga revisión de fiabilidad: «Vuelve», los lugares, las horas y los días hacen lo que dice su frase.</item>
+
+    </string-array>
+
     <string-array name="whats_new_0_206_0">
 
         <item>Reanudar un recordatorio en pausa que vuelve cada cierto tiempo («cada 3 h») lo empieza de nuevo desde ese momento: lo que tocaba durante la pausa ya no suena nada más reanudarlo, ni espera un «hecho» para volver a contar. Si su momento aún no había llegado, se mantiene. Las rutinas no cambian: su pausa congela la cuenta.</item>
