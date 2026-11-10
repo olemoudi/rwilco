@@ -624,6 +624,17 @@ val Trigger.namesAnHour: Boolean
         is Trigger.Countdown, is Trigger.Location -> false
     }
 
+/**
+ * Whether this rule names an hour of the day it is due on: its trigger does, or a "y sólo si"
+ * stretch of hours on it does (2026-11-10).
+ *
+ * "Al llegar al trabajo, y sólo si es de 8 a 11" says *when* as surely as "a la vez que entre las
+ * 8 y las 11" — the same sentence, written with the other control — but the rest only asked the
+ * trigger, and a place names no hour. So it ended at the day's start, or at the hour of the last
+ * "hecho" under "a la misma hora", and stood in front of the window it was meant to hand back.
+ */
+val TriggerRule.namesAnHour: Boolean get() = trigger.namesAnHour || windows().isNotEmpty()
+
 /** Whether this trigger is true only at an instant. See [asState]. */
 val Trigger.isMoment: Boolean get() = asState() == null
 

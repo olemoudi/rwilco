@@ -1856,6 +1856,12 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_208_0">
+
+        <item>Un recordatorio con un lugar y «y sólo si» una franja, que vuelve al día siguiente, vuelve a vigilar el lugar desde medianoche. Antes esperaba a la hora de empezar el día (o, con «A la misma hora», a la hora del último «hecho») y se perdía la franja de la mañana: «al llegar al trabajo, sólo de 8 a 11» marcado a mediodía no avisaba a la mañana siguiente. Una franja que pasa de medianoche («en casa, de 22 a 2») ya no vuelve a sonar esa misma noche.</item>
+
+    </string-array>
+
     <string-array name="whats_new_0_207_0">
 
         <item>Nuevo desde la última actualización. Reanudar un recordatorio en pausa que vuelve cada cierto tiempo («cada 3 h») lo empieza de nuevo desde ese momento: ya no suena al instante por lo que tocaba durante la pausa.</item>

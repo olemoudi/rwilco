@@ -419,8 +419,14 @@ anything repeats**:
   **the same hour** as the moment it is counted from — a reminder answered at bedtime every
   night wants to come back at bedtime, not at nine — or **one of its own**. Only read where the
   recurrence's moment is the ring: with rules that name an hour the span says which *day* and
-  they say when in it (`restUntil`), which the editor says out loud rather than offering a
-  control that decides nothing.
+  they say when in it (`restUntil`: the rest ends at that day's midnight), which the editor says
+  out loud rather than offering a control that decides nothing. **A rule names an hour when its
+  trigger does or a "y sólo si" window on it does** (`TriggerRule.namesAnHour`, 0.208.0): "al
+  llegar al trabajo, y sólo si es de 8 a 11" asked only the trigger, a place names none, and the
+  rest ended at the day's start — or, under "a la misma hora", at the hour of the last "hecho" —
+  standing in front of the very window it was handing back. **And a window still open at that
+  midnight is the night that was dealt with** (`pastLastNight`): "en casa, de 22 a 2" rests until
+  two, not until twelve, or it rang again ten minutes after the "hecho".
 
   **And which *day*, when the rules only allow some of them** (`SpanLanding`). "Los viernes a las
   14:00, y vuelve cada 30 días": thirty days after a Friday is a Sunday, and there are three

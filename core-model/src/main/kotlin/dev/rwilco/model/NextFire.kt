@@ -647,8 +647,26 @@ fun Reminder.restUntil(zone: ZoneId, dayStart: LocalTime, shape: DayShape = DayS
     } else {
         back
     }
-    if (rules.none { it.trigger.namesAnHour }) return moved
-    return moved.atZone(zone).toLocalDate().atStartOfDay(zone).toInstant()
+    if (rules.none { it.namesAnHour }) return moved
+    return pastLastNight(moved.atZone(zone).toLocalDate().atStartOfDay(zone).toInstant(), zone, shape)
+}
+
+/**
+ * [midnight], or the close of a window that is still open there because it opened the evening
+ * before (2026-11-10).
+ *
+ * "En casa, y sólo si es de 22 a 2": a moment past midnight belongs to the day the window opened
+ * ([Condition.TimeWindow.holdsAt]), so a rest that hands the rules the *next* day must not end
+ * inside the night it has just dealt with — ending at midnight, it rang again at home ten minutes
+ * after the "hecho". The windows are the rules' own and the ones a trigger folds into a sibling as
+ * (`Trigger.Interval` under "a la vez").
+ */
+private fun Reminder.pastLastNight(midnight: Instant, zone: ZoneId, shape: DayShape): Instant {
+    val at = midnight.atZone(zone).toLocalDateTime()
+    val lastNight = rules.flatMap { rule -> rule.windows() + listOfNotNull(rule.trigger.asState(shape) as? Condition.TimeWindow) }
+        .filter { it.to <= it.from && it.holdsAt(at) }
+        .maxOfOrNull { at.toLocalDate().atTime(it.to).atZone(zone).toInstant() }
+    return lastNight?.let { maxOf(it, midnight) } ?: midnight
 }
 
 /**

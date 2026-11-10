@@ -685,7 +685,7 @@ fun EditorScreen(
                         },
                         chanceDecides = state.draft.rules.any { it.trigger.decidesItsOwnDates },
                         defaultTime = state.defaultTime,
-                        rulesNameAnHour = state.draft.rules.any { it.trigger.namesAnHour },
+                        rulesNameAnHour = state.draft.rules.any { it.namesAnHour },
                         rulesSayOnce = state.draft.rules.isNotEmpty() && state.draft.rules.all { it.trigger.isOneShot },
                         // The same union the scheduler bends a span to (Reminder.daysNamedByRules),
                         // asked of the draft: what the rules and their fences allow, together.
