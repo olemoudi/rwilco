@@ -33,6 +33,20 @@ class VoiceStepTest {
     }
 
     @Test
+    fun `a new ear is not listening until it says so, words kept`() {
+        // After a rotation: the old ear had said it was ready, the new one has not yet.
+        val listening = VoiceState.Listening("comprar", level = 0.6f, said = listOf("mañana"), ready = true)
+        val opening = voiceStep(listening, VoiceInputEvent.Opening)
+        assertEquals(VoiceState.Listening("comprar", said = listOf("mañana")), opening)
+        // The new ear's ready closes the stretch the old one was in the middle of.
+        assertEquals(VoiceState.Listening(said = listOf("mañana", "comprar"), ready = true), voiceStep(opening, heard(VoiceEvent.Ready)))
+        // Nothing to open on a paused microphone, or anywhere but listening.
+        val paused = VoiceState.Listening(said = listOf("mañana"), paused = true)
+        assertEquals(paused, voiceStep(paused, VoiceInputEvent.Opening))
+        assertEquals(VoiceState.Asking, voiceStep(VoiceState.Asking, VoiceInputEvent.Opening))
+    }
+
+    @Test
     fun `a pause closes a stretch and the listening goes on`() {
         val first = voiceStep(VoiceState.Listening("comprar pan"), heard(VoiceEvent.Segment("comprar pan")))
         assertEquals(VoiceState.Listening(said = listOf("comprar pan")), first)

@@ -56,6 +56,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.animateContentSize
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -70,6 +71,9 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
 import dev.rwilco.ui.voice.VoiceSheet
+import dev.rwilco.voice.EarlyEar
+import dev.rwilco.voice.Listener
+import dev.rwilco.voice.VoiceInput
 import dev.rwilco.voice.VoiceOutcome
 import dev.rwilco.voice.VoiceState
 import dev.rwilco.model.plain
@@ -229,9 +233,15 @@ fun HomeScreen(
     // [DictationSheet]: the mic's level changes it a dozen times a second while listening, and
     // read here it would recompose the whole of Home with it.
     val micContext = LocalContext.current
-    val openDictation = {
-        viewModel.openVoice(ContextCompat.checkSelfPermission(micContext, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED)
-    }
+    val micAllowed = { ContextCompat.checkSelfPermission(micContext, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED }
+    val openDictation = { viewModel.openVoice(micAllowed()) }
+    // The ear, Home's rather than the sheet's (0.209.0): the button warms it while the finger is
+    // still holding, and the sheet takes it over already listening ([EarlyEar]). Let go of with Home.
+    val ear = remember { EarlyEar { VoiceInput.factory(micContext) } }
+    DisposableEffect(ear) { onDispose { ear.cancel() } }
+    val earLocale = LocalConfiguration.current.locales[0]
+    // Only with the microphone already allowed: the question is the sheet's to ask, in its own time.
+    val warmEar = { if (micAllowed()) ear.warm(earLocale, viewModel.vocabulary.value.bias) }
     // **"Nuevo" asks which kind whenever there is a kind to ask about** (0.65.3). The friction
     // pass (0.63.0) had it stop asking once a preset was pinned, on the argument that the row
     // above the list had already answered — and the owner reported the menu as gone. The row
@@ -366,6 +376,7 @@ fun HomeScreen(
     var dictatedId by rememberSaveable { mutableStateOf<String?>(null) }
     DictationSheet(
         viewModel = viewModel,
+        ear = ear,
         hereLabel = hereLabel,
         defaultTime = state.defaultTime,
         zone = zone,
@@ -662,7 +673,7 @@ fun HomeScreen(
                 // button the left thumb reaches with the phone in the left hand). Held, as "hecho"
                 // is, so a thumb resting on the corner cannot open a microphone ([VoiceDoor]).
                 Row(horizontalArrangement = Arrangement.spacedBy(spacing.md), verticalAlignment = Alignment.CenterVertically) {
-                    VoiceDoor(onOpen = openDictation, onTapped = { snackbar.show(holdToDictate) })
+                    VoiceDoor(onOpen = openDictation, onTapped = { snackbar.show(holdToDictate) }, onWarm = warmEar, onCool = ear::cool)
                     // **Not amber either** (0.68.0). It was the biggest amber thing on the screen,
                     // and amber means what fires next; the one primary action wears the inverted
                     // neutral every other primary in the app wears (EmptyState, "Hecho"), and the
@@ -1463,6 +1474,7 @@ private fun QuietTodayRow() {
 @Composable
 private fun DictationSheet(
     viewModel: HomeViewModel,
+    ear: Listener,
     hereLabel: String,
     defaultTime: java.time.LocalTime,
     zone: java.time.ZoneId,
@@ -1492,6 +1504,7 @@ private fun DictationSheet(
     val undoLabel = stringResource(R.string.common_undo)
     VoiceSheet(
         state = current,
+        listener = ear,
         preview = preview,
         vocabulary = vocabulary,
         today = localToday(),

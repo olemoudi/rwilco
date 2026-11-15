@@ -116,6 +116,7 @@
     <string name="voice_mic_open">Micrófono abierto</string>
     <string name="voice_mic_closed">Micrófono cerrado</string>
     <string name="voice_hint">Di qué y cuándo: «llamar a Marta mañana a las 6». Sin prisa; pulsa Terminado al acabar.</string>
+    <string name="voice_hint_wait">Un momento: empieza a hablar cuando se encienda el micrófono.</string>
     <string name="voice_stop">Terminado</string>
     <string name="voice_paused">Micrófono en pausa</string>
     <string name="voice_paused_body">Lo que has dicho sigue aquí: continúa, o pulsa Terminado.</string>
@@ -1854,6 +1855,14 @@
         <item>Un aviso con sonido va ahora a tus auriculares cuando los llevas puestos, en vez de salir por el altavoz del móvil como haría cualquier alarma. Es un ajuste, en Sonido, y merece la pena desactivarlo si tus auriculares viven en un cajón: un aviso que suena para nadie es un aviso perdido.</item>
         <item>Y ya no te corta la música. Lo que estuvieras escuchando baja unos decibelios y sigue por debajo mientras el aviso suena por encima —el aviso va por el canal de alarma y la música no, así que ninguno tiene que pelear con el otro— y vuelve solo a su volumen. Antes pedía el audio en exclusiva, lo que mataba un podcast por un tono de diez segundos.</item>
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
+    </string-array>
+
+    <string-array name="whats_new_0_209_0">
+
+        <item>Dictado: el micrófono empieza a abrirse mientras aún mantienes pulsado el botón, así que ya escucha cuando aparece la hoja y no se pierden las palabras dichas un poco antes de tiempo. Hasta que está listo, la hoja te pide esperar al micrófono en vez de invitarte a hablar.</item>
+        <item>Si giras el teléfono a mitad de un dictado, la hoja dice «Preparando el micrófono…» hasta que el nuevo micrófono escucha de verdad, en vez de «Te escucho…» antes de tiempo.</item>
+        <item>Fiabilidad del dictado: una frase podía escribirse dos veces cuando el reconocedor la repetía al final; arreglado. También aguanta mejor cuando el reconocedor del teléfono no tiene el paquete de idioma o no sabe escuchar entre pausas: cambia de modo en vez de rendirse, y sólo lo paga una vez.</item>
+
     </string-array>
 
     <string-array name="whats_new_0_208_0">

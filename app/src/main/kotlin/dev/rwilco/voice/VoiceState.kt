@@ -127,6 +127,13 @@ sealed interface VoiceInputEvent {
     /** "Seguir": the microphone opens again after a pause, the words still there. */
     data object Resume : VoiceInputEvent
 
+    /**
+     * The sheet is opening an ear (0.209.0): not listening until that ear says so. After a
+     * rotation the old ear had said it, and the sheet went on saying "Te escucho" over a
+     * microphone that was not open yet.
+     */
+    data object Opening : VoiceInputEvent
+
     /** What was heard, put right by hand, read again into the same reminder (0.190.0). */
     data class Reread(val text: String) : VoiceInputEvent
 
@@ -168,6 +175,7 @@ fun voiceStep(state: VoiceState, event: VoiceInputEvent): VoiceState = when (eve
         state
     }
     VoiceInputEvent.Resume -> if (state is VoiceState.Listening && state.paused) state.copy(paused = false, ready = false) else state
+    VoiceInputEvent.Opening -> if (state is VoiceState.Listening && !state.paused) state.copy(ready = false, level = 0f) else state
     // Written from the sentence, or from Gemini's guess once confirmed.
     is VoiceInputEvent.Written -> if (state is VoiceState.Thinking || state is VoiceState.Confirm) VoiceState.Created(event.reminder, event.check) else state
     is VoiceInputEvent.Proposed ->

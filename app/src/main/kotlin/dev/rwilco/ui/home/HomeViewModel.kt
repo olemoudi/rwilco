@@ -609,6 +609,9 @@ class HomeViewModel(
         val heard = (event as? VoiceInputEvent.Heard)?.event ?: return event
         val vocabulary = vocabulary.value
         fun fix(text: String, alternatives: List<String>): String {
+            // An empty stretch stays empty: its words came already, or it stands for the partial
+            // on the screen, and a reading chosen for it would say them a second time (0.209.0).
+            if (text.isBlank()) return text
             val chosen = vocabulary.choose(alternatives.ifEmpty { listOf(text) }) ?: text
             return vocabulary.corrected(chosen).also { if (it != text) ownWordsFixed++ }
         }

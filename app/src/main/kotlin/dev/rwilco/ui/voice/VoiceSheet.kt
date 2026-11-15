@@ -154,6 +154,7 @@ import dev.rwilco.ui.theme.MonoStyles
 import dev.rwilco.ui.theme.Tokens
 import dev.rwilco.ui.theme.color
 import dev.rwilco.voice.HeardMark
+import dev.rwilco.voice.Listener
 import dev.rwilco.voice.Refining
 import dev.rwilco.voice.VoiceAlternative
 import dev.rwilco.voice.VoiceCheck
@@ -201,6 +202,12 @@ import kotlinx.coroutines.launch
 fun VoiceSheet(
     /** Where the sheet is; held by Home's ViewModel, so a rotation keeps it. */
     state: VoiceState,
+    /**
+     * The ear: Home's, so the microphone button can open it while the finger still holds and the
+     * sheet take it over already listening (0.209.0, [dev.rwilco.voice.EarlyEar]). Closed whenever
+     * the sheet is not listening, and when the sheet goes.
+     */
+    listener: Listener,
     /** What the words heard so far come to: what of them is a correction, and what they would be written as. */
     preview: VoicePreview?,
     /** The person's own words: for the recognizer to lean towards (0.189.0), and to offer for a word tapped as wrong (0.192.0). */
@@ -230,7 +237,6 @@ fun VoiceSheet(
     val spacing = Tokens.spacing
     val haptics = Tokens.haptics
     val scheme = MaterialTheme.colorScheme
-    val listener = remember { VoiceInput.factory(context) }
     DisposableEffect(listener) { onDispose { listener.cancel() } }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
@@ -284,6 +290,9 @@ fun VoiceSheet(
     val earOpen = listening != null && !listening.paused
     LaunchedEffect(earOpen) {
         if (!earOpen) return@LaunchedEffect
+        // Not listening until this ear says so — a rotation's new one included (0.209.0). An ear
+        // warmed by the button says so at once, as it hands over what it heard.
+        send(VoiceInputEvent.Opening)
         listener.start(locale, vocabulary.bias) { event -> send(VoiceInputEvent.Heard(event)) }
         try {
             awaitCancellation()
@@ -455,13 +464,17 @@ fun VoiceSheet(
                     Disc(current)
                     Spacer(Modifier.height(spacing.lg))
                     val fast = Tokens.motion.fast
+                    // Nothing heard yet: while the ear is still opening, a word to wait for it
+                    // rather than an example that invites talking into a closed microphone (0.209.0).
+                    val waiting = listening != null && !listening.ready && !listening.paused && !listening.finishing
+                    val hint = if (words.isBlank()) (if (waiting) R.string.voice_hint_wait else R.string.voice_hint) else null
                     AnimatedContent(
-                        targetState = words.isBlank(),
+                        targetState = hint,
                         transitionSpec = { fadeIn(tween(fast)) togetherWith fadeOut(tween(fast)) },
                         label = "voice-words",
-                    ) { blank ->
-                        if (blank) {
-                            Text(stringResource(R.string.voice_hint), style = MaterialTheme.typography.bodyLarge, color = scheme.onSurfaceVariant)
+                    ) { shownHint ->
+                        if (shownHint != null) {
+                            Text(stringResource(shownHint), style = MaterialTheme.typography.bodyLarge, color = scheme.onSurfaceVariant)
                         } else {
                             // A correction is seen to be taken as one while it is said: what it
                             // corrects is struck through as soon as the words after it line up.

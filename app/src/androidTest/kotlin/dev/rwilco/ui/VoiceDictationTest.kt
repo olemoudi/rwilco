@@ -94,6 +94,15 @@ class VoiceDictationTest {
     /** The recognizer's other readings of the last stretch (0.192.0). */
     private var otherReadings = listOf<String>()
 
+    /** How many times an ear was started: a tap on the door must open none (0.209.0). */
+    private var earStarts = 0
+
+    /**
+     * The last stretch closed by a pause too, and the whole of it sent again as the final's
+     * readings with an empty final — as a segmented session's results may (0.209.0).
+     */
+    private var finalRepeats = false
+
     /** What the fake ear will have heard, in one breath. */
     private var sentence: String
         get() = stretches.joinToString(" ")
@@ -111,6 +120,7 @@ class VoiceDictationTest {
         private var onEvent: ((VoiceEvent) -> Unit)? = null
         override fun start(locale: Locale, words: List<String>, onEvent: (VoiceEvent) -> Unit) {
             this.onEvent = onEvent
+            earStarts++
             main.postDelayed({ onEvent(VoiceEvent.Ready) }, 50)
             var at = 150L
             for (stretch in stretches.dropLast(1)) {
@@ -121,9 +131,11 @@ class VoiceDictationTest {
             val last = stretches.last()
             main.postDelayed({ onEvent(VoiceEvent.Partial(last.substringBefore(' '))) }, at)
             main.postDelayed({ onEvent(VoiceEvent.Partial(last)) }, at + 150)
+            if (finalRepeats) main.postDelayed({ onEvent(VoiceEvent.Segment(last)) }, at + 250)
         }
         override fun stop() {
-            main.postDelayed({ onEvent?.invoke(VoiceEvent.Final(stretches.last(), listOf(stretches.last()) + otherReadings)) }, 50)
+            val final = if (finalRepeats) VoiceEvent.Final("", listOf(sentence)) else VoiceEvent.Final(stretches.last(), listOf(stretches.last()) + otherReadings)
+            main.postDelayed({ onEvent?.invoke(final) }, 50)
         }
         override fun cancel() {
             onEvent = null
@@ -174,6 +186,8 @@ class VoiceDictationTest {
         VoiceInput.factory = { FakeEar() }
         app.repository.deleteAll()
         otherReadings = emptyList()
+        earStarts = 0
+        finalRepeats = false
         app.settingsStore.update {
             it.copy(presets = emptyList(), compactHome = false, savedPlaces = listOf(casa), lastSeenVersionCode = BuildConfig.VERSION_CODE, voiceFixes = emptyMap())
         }
@@ -216,6 +230,19 @@ class VoiceDictationTest {
         // And it says why (0.191.0).
         waitFor(s(R.string.home_dictate_tapped))
         assertEquals(emptyList<String>(), runBlocking { app.repository.openNow() }.map { it.text })
+        // Not even for a moment: a brushed button opens no microphone (0.209.0).
+        assertEquals(0, earStarts)
+    }
+
+    @Test
+    fun aStretchTheRecognizerSendsAgainAtTheEndIsWrittenOnce() {
+        // A segmented session's results after its stretches (0.209.0): once, a reading chosen for
+        // the empty final brought the whole sentence back, and it was written twice.
+        sentence = "comprar pan cuando llegue a casa"
+        finalRepeats = true
+        dictate()
+        rule.waitUntil(30_000) { runBlocking { app.repository.openNow() }.isNotEmpty() }
+        assertEquals(listOf("Comprar pan"), runBlocking { app.repository.openNow() }.map { it.text })
     }
 
     @Test
@@ -227,6 +254,9 @@ class VoiceDictationTest {
         val door = rule.onNodeWithContentDescription(s(R.string.home_dictate))
         door.performTouchInput { down(center) }
         finish()
+        // One ear, opened while the finger was still holding and taken over by the sheet with
+        // what it had heard (0.209.0) — not a second one started when the sheet came up.
+        assertEquals(1, earStarts)
         // Written, with the words that are left and the doorway into the saved place.
         rule.waitUntil(30_000) { runBlocking { app.repository.openNow().any { it.text == "Comprar pan" } } }
         door.performTouchInput { up() }

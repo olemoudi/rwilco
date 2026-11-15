@@ -120,6 +120,7 @@
     <string name="voice_mic_open">Microphone on</string>
     <string name="voice_mic_closed">Microphone off</string>
     <string name="voice_hint">Say what and when: “call Marta tomorrow at 6”. No rush; press Done when you’ve finished.</string>
+    <string name="voice_hint_wait">One moment: start talking when the microphone lights up.</string>
     <string name="voice_stop">Done</string>
     <string name="voice_paused">Microphone paused</string>
     <string name="voice_paused_body">What you said is still here: carry on, or press Done.</string>
@@ -1869,6 +1870,14 @@
         <item>A reminder with sound now goes to your headphones when you are wearing any, instead of out of the phone\'s speaker as an alarm otherwise would. It is a setting, in Sound, and it is worth turning off if your earbuds live in a drawer: a reminder played to nobody is a reminder missed.</item>
         <item>And it no longer stops your music. What was playing drops a few decibels and carries on underneath while the reminder sounds over it — the reminder is on the alarm channel and the music is not, so neither has to fight the other — and comes back by itself. It used to ask for the audio outright, which ended podcasts for a ten-second chime.</item>
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
+    </string-array>
+
+    <string-array name="whats_new_0_209_0">
+
+        <item>Dictating: the microphone starts opening while you are still holding the button, so it is listening by the time the sheet appears and words said a beat early are no longer lost. Until it is ready, the sheet asks you to wait for the microphone rather than inviting you to talk.</item>
+        <item>After turning the phone mid-dictation, the sheet says «Getting the microphone ready…» until the new microphone really is listening, instead of «Listening…» too early.</item>
+        <item>Dictation reliability: a sentence could be written twice when the recognizer sent it again at the end; fixed. Also more robust when the phone\'s recognizer has no language pack or will not listen through pauses: it falls back instead of giving up, and only pays for it once.</item>
+
     </string-array>
 
     <string-array name="whats_new_0_208_0">

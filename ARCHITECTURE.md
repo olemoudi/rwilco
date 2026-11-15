@@ -1775,6 +1775,30 @@ loud what DST and a change of zone do to a landing.
   field shows plain words (the selection mapped past the marks); "Quitar" is not offered for the only
   word. Words kept as words are no cue to ask Gemini (`mightSayWhen` skips them), and a reading with
   any of them never asks Gemini at all — the person has said how to read it.
+- **The microphone opens while the finger still holds it (0.209.0, the owner: "empiezo a hablar
+  demasiado pronto y la captura empieza con retardo").** The recognizer only started once the
+  500 ms hold had gone through and the sheet was up, and the hold ends in a buzz that reads as
+  "go", so the first words went into a microphone still opening. The ear is now Home's
+  (`EarlyEar`, around the `VoiceInput.factory` one, made at first use so a device test's fake
+  still takes): `VoiceDoor` watches its own press, and a press past any tap (150 ms) *warms* it —
+  listening, what it hears kept — and the sheet's `start` takes it over as it is, replaying the
+  ready and the first words. A press let go before the hold went through, or a hold whose sheet
+  never took the ear (1.5 s), `cool`s it; `cool` never touches an ear the sheet took, and Home
+  going cancels it. The sheet sends `VoiceInputEvent.Opening` before each `start`, so a new ear —
+  a rotation's — is "Preparando" until it says it is ready, and while nothing has been heard the
+  hint says to wait for the microphone instead of giving an example to say. The language pack the
+  phone's own recognizer lacks is remembered per language for the life of the process
+  (`noPackFor`; each sheet used to pay a failed round for it), while a segmented session refused
+  is given up only for the listening it was refused in. The `voice` diagnostics note now says how
+  long the recognizer took to be ready. **The review round with it:** every recognizer callback
+  answers only while its recognizer is the one listening (a recognizer kept for its language pack
+  shared the round's flags with its replacement); a segmented round's results come with no
+  readings (a reading chosen for the empty stretch brought the sentence back and it was written
+  twice — `personal` also leaves an empty stretch empty); a refusal counts on *that recognizer's*
+  first round; rounds that keep ending at once while asked for a segmented session are asked the
+  old way before the ear is called broken; and a language fallback after "Terminado" ends rather
+  than opening a second microphone. `EarlyEarTest`, `VoiceStepTest`, `VoiceDictationTest` (the
+  held door opens one ear; a tap opens none; a sentence sent again at the end is written once).
 - **A held stepper keeps counting (0.51.0).** A step is one unit on purpose (three minutes has
   to be sayable, and the countdown sheet says why), and the price was seventeen taps from thirty
   to forty-seven. `Stepper` repeats after `Motion.holdRepeatDelay`, quickening to
