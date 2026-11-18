@@ -51,6 +51,12 @@ data class AppSettings(
      * saying exactly when, and nothing here is allowed to argue with it.
      */
     val awake: AwakeHours = AwakeHours(),
+    /**
+     * A ring set off by a place ([ringsByPlace]) makes its noise inside the sleeping hours too —
+     * the one exception to them (owner, 2026-11-18). On by default; off, places keep the night
+     * like everything else.
+     */
+    val placesRingAtNight: Boolean = true,
     /** What's-new sheet bookkeeping: the last versionCode whose notes were shown. */
     val lastSeenVersionCode: Int = 0,
     /** Places named once and offered whole whenever a rule needs one: home, work, the gym. */

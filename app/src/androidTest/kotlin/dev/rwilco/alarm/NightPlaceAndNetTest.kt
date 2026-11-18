@@ -127,6 +127,18 @@ class NightPlaceAndNetTest {
     }
 
     @Test
+    fun withPlacesSwitchedOffInSettingsALeavingInTheNightIsHushedToo() = runBlocking {
+        asleepNow()
+        app.settingsStore.update { it.copy(placesRingAtNight = false) }
+        val leaving = Trigger.Location(40.4169, -3.7035, 200, Presence.OUTSIDE, "Casa", onCrossing = true)
+        app.repository.save(reminder("night-place-off", TriggerRule(leaving)))
+        app.firing.fire("night-place-off", ruleIndex = 0)
+        val card = ringCard("night-place-off")
+        assertNotNull("leaving home did not ring at all", card)
+        assertFalse("switched off, a place still made a noise at night", soundsOn(card!!.notification.channelId))
+    }
+
+    @Test
     fun theIcymiWaitsWhileTheRingsOwnCardIsStillInTheShade() = runBlocking {
         // Rang two days ago and never answered: the net's word is due (a day, with nothing next).
         val gone = Trigger.AtDateTime(LocalDateTime.ofInstant(app.clock.instant().minus(Duration.ofDays(2)), app.clock.zone))

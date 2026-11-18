@@ -245,6 +245,7 @@ class ReminderCodecTest {
                 """"popularTriggersFirst":false,""" +
                 """"weekendDay":"FRIDAY","weekendTime":"20:30","weekendEndDay":"SUNDAY","weekendEndTime":"22:00",""" +
                 """"awake":{"wake":"08:00","sleep":"23:30","weekendWake":"10:00","weekendSleep":"01:30"},""" +
+                """"placesRingAtNight":true,""" +
                 """"lastSeenVersionCode":0,"savedPlaces":[],"savedWindows":[],""" +
                 """"defaultActions":["NOTIFICATION","SOUND","VIBRATE"],"routineActions":["NOTIFICATION","SOUND","VIBRATE"],"presets":[],"hiddenTexts":[],"tagPrefs":[],""" +
                 """"dayStart":"09:00","afternoon":"17:00","evening":"20:00",""" +

@@ -373,7 +373,7 @@ class ReminderFiring(
         // somebody pressing "probar una alerta" is asking whether the noise works, and the one
         // answer that must never be silence is that one. **And a place is the other** (owner,
         // 2026-11-18): "cuando salga de casa" at four in the morning rings — see [ringsByPlace].
-        val byPlace = reminder.ringsByPlace(ruleIndex, viaSnoozePlace)
+        val byPlace = settings.placesRingAtNight && reminder.ringsByPlace(ruleIndex, viaSnoozePlace)
         val night = hushedByTheHour(rangFor, now, clock.zone, settings.dayShape)
         val asleep = !TestAlert.isTest(id) && !byPlace && night
         // **A contact is told about quietly, whatever its row says.** The plan is fixed here
@@ -385,7 +385,7 @@ class ReminderFiring(
         // ring on time" note — and quietly, without the screen: it has made its noise once.
         val plan = if (reminder.isContact) CONTACT_PLAN
         else firingPlan(reminder.actions).let { if (asleep) it.hushed() else it }.let { if (announced) it.hushed().copy(fullScreen = false) else it }
-        Diag.note(TAG_DIAG, "r=${short(id)} RANG for $rangFor rule=$ruleIndex${if (late != null) " (late for $late)" else ""}${if (viaSnoozePlace) " (place snooze)" else ""}${if (viaCondition) " (its place, in the stretch)" else ""}${if (byPlace && night) " (a place: rings through the night)" else ""} plan=${plan.summary()}")
+        Diag.note(TAG_DIAG, "r=${short(id)} RANG for $rangFor rule=$ruleIndex${if (late != null) " (late for $late)" else ""}${if (viaSnoozePlace) " (place snooze)" else ""}${if (viaCondition) " (its place, in the stretch)" else ""}${when { !night -> ""; byPlace -> " (a place: rings through the night)"; reminder.ringsByPlace(ruleIndex, viaSnoozePlace) -> " (a place, hushed: off in Settings)"; else -> "" }} plan=${plan.summary()}")
         // From the sello to the screen in one piece: the receiver runs this under a timeout, and
         // a cancellation landing between markFired and show spent a moment nothing ever showed
         // — one missedFire could never see again, because the row said it had rung.

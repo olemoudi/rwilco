@@ -3016,6 +3016,8 @@ loud what DST and a change of zone do to a landing.
   Only a place that *rang* it: a clock rule fenced by a place, a clock snooze after a place ring
   and a routine's questions keep the night. The row cannot say it (a place snooze rings with no
   rule), so the firing carries it as `EXTRA_BY_PLACE` to the screen, the card's tap and the repeats.
+  **It is a switch** (0.212.0, `AppSettings.placesRingAtNight`, on by default), under the hours in
+  Settings → Tu día: off, places keep the night like everything else.
   Asked at three doors — `ReminderFiring.fire`, `ReminderFiring.playAgain`, and `AlertActivity`,
   which builds its own plan from the row and would otherwise start the alarm for anybody tapping
   the card at three in the morning. **The rehearsal is the one exemption** (`TestAlert.isTest`):

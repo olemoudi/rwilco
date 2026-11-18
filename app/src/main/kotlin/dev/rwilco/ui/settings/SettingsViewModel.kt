@@ -401,6 +401,8 @@ class SettingsViewModel(
     /** The hours somebody is up: where "at random during the day" draws its moment from. */
     fun setAwake(hours: AwakeHours) = update { it.copy(awake = hours) }
 
+    fun setPlacesRingAtNight(on: Boolean) = update { it.copy(placesRingAtNight = on) }
+
     private fun update(transform: (AppSettings) -> AppSettings) {
         viewModelScope.launch { store.update(transform) }
     }

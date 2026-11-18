@@ -574,6 +574,14 @@ fun SettingsScreen(
                                 onSleep = { viewModel.setAwake(current.awake.copy(weekendSleep = it)) },
                             )
                         }
+                        // The one exception to the hours above, said right under them (0.212.0):
+                        // a ring a place set off — leaving home at four — is somebody already up.
+                        SettingSwitchRow(
+                            title = stringResource(R.string.settings_places_at_night),
+                            info = stringResource(R.string.settings_places_at_night_hint),
+                            checked = current.placesRingAtNight,
+                            onCheckedChange = viewModel::setPlacesRingAtNight,
+                        )
                         // The stretches of that day worth a name of their own. Here rather than
                         // in a card of its own because this group IS the shape of the day: when
                         // you get up, when the weekend is, and which bits of it you call things.
