@@ -291,4 +291,13 @@ class SafetyNetTest {
         assertTrue(NetWord.NEVER_RANG.saysItGotAway, "its moment came and nothing rang at all")
         assertFalse(NetWord.WAITING.saysItGotAway, "it is still waiting at its place, which is not missing it")
     }
+
+    @Test
+    fun `a word held back by a card in the shade is looked for again later, never earlier`() {
+        val due = java.time.Instant.parse("2026-11-18T09:00:00Z")
+        assertEquals(due, netAlarmAt(due, heldUntil = null), "nothing held: its own moment")
+        assertEquals(due.plusSeconds(3600), netAlarmAt(due, heldUntil = due.plusSeconds(3600)), "held: the next look")
+        assertEquals(due, netAlarmAt(due, heldUntil = due.minusSeconds(60)), "a hold already past: its own moment, at once")
+        assertNull(netAlarmAt(null, heldUntil = due), "no word to say: nothing to arm, hold or not")
+    }
 }

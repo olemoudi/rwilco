@@ -93,6 +93,10 @@ class RwilcoApplication : Application() {
     var placeWatcher: PlaceWatcher by Built()
         private set
 
+    /** The safety net's words held back while a card about their reminder is showing ([NetHolds]). */
+    var netHolds: dev.rwilco.alarm.NetHolds by Built()
+        private set
+
     /** What the place watch did and why, for the log behind the button in Settings. */
     var placeLog: PlaceLogStore by Built()
         private set
@@ -195,9 +199,10 @@ class RwilcoApplication : Application() {
         settings = settingsStore.settings
             .map<AppSettings, AppSettings?> { it }
             .stateIn(appScope, SharingStarted.Eagerly, null)
-        scheduler = ReminderScheduler(this, repository, settingsStore, clock)
+        netHolds = dev.rwilco.alarm.NetHolds(this)
+        scheduler = ReminderScheduler(this, repository, settingsStore, clock, netHolds)
         placeWatch = PlaceWatchStore(this)
-        firing = ReminderFiring(this, repository, settingsStore, scheduler, placeWatch, clock)
+        firing = ReminderFiring(this, repository, settingsStore, scheduler, placeWatch, clock, netHolds)
         geofences = GeofenceManager(this, repository, GeofenceStore(this))
         placeLog = PlaceLogStore(this)
         placeWatcher = PlaceWatcher(this, repository, firing, placeWatch, placeLog, settingsStore, clock)

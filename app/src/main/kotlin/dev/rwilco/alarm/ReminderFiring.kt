@@ -121,6 +121,8 @@ class ReminderFiring(
     /** Where the phone was last seen, for the "y sólo si estoy en X" conditions. */
     private val placeWatch: PlaceWatchStore,
     private val clock: Clock,
+    /** The net's words held back while a card about them is showing; see [NetHolds]. */
+    private val netHolds: NetHolds? = null,
 ) {
 
     private val repeater = SoundRepeater(context)
@@ -757,19 +759,29 @@ class ReminderFiring(
             scheduler.rearmAll()
             return@withLock
         }
-        // **Only where nothing about it is in the shade already** (owner, 2026-11-18). The ring's
-        // own card still there, a routine's question, an earlier word: any of them is this
-        // reminder in front of somebody already, and an ICYMI beside it says the same thing twice.
-        // The moment's turn is spent all the same — `nudgedAt`, with no NET line in the history,
-        // because nothing was said — or the re-arm would hand the same word straight back. When
-        // the system will not say what is open, the word goes out as it always did.
-        if (AlertNotifications.cardOpen(AlertNotifications.openCards(context), id)) {
-            Log.i(TAG, "$id: the safety net holds its word; a card about it is still open")
-            Diag.note(TAG_DIAG, "r=${short(id)} net held back (${due.word}): a card about it is still open")
-            repository.setNudgedAt(id, now)
+        // Held back a moment ago and not due another look yet: an alarm armed before the hold.
+        val heldUntil = netHolds?.until(id)
+        if (heldUntil != null && heldUntil > now.plusSeconds(EARLY_GRACE_SECONDS)) {
+            Diag.note(TAG_DIAG, "r=${short(id)} net still held until $heldUntil")
             scheduler.rearmAll()
             return@withLock
         }
+        // **Not while a card about it is showing in the shade** (owner, 2026-11-18). The ring's own
+        // card still there, a routine's question, an earlier word: any of them is this reminder
+        // in front of somebody already, and an ICYMI beside it says the same thing twice. Showing
+        // means in the drawer now — a card swiped away, or lost to a reboot, is not showing — so
+        // the word is HELD, not spent: it looks again in [NET_RECHECK] and goes out at the first
+        // look that finds the shade clear of it. When the system will not say what is showing,
+        // the word goes out as it always did.
+        if (AlertNotifications.cardOpen(AlertNotifications.openCards(context), id)) {
+            val again = now.plus(NET_RECHECK)
+            Log.i(TAG, "$id: the safety net holds its word while a card about it is showing")
+            Diag.note(TAG_DIAG, "r=${short(id)} net held back (${due.word}): a card about it is showing; again at $again")
+            netHolds?.hold(id, again)
+            scheduler.rearmAll()
+            return@withLock
+        }
+        netHolds?.clear(id)
         Log.i(TAG, "safety net for $id, about the moment at ${due.about} (${due.word})")
         Diag.note(TAG_DIAG, "r=${short(id)} NET said (${due.word}), about the moment at ${due.about}")
         repository.setNudgedAt(id, now)
@@ -1303,6 +1315,13 @@ class ReminderFiring(
 
         /** Alarms arrive late, never early — but a few seconds of slack costs nothing. */
         const val EARLY_GRACE_SECONDS = 5L
+
+        /**
+         * How long a net's word held back by a card in the shade waits before looking again: soon
+         * enough that a card swiped away is followed by its ICYMI within the hour, rare enough that
+         * a card left showing for days costs a quiet wake an hour and nothing more.
+         */
+        val NET_RECHECK: java.time.Duration = java.time.Duration.ofHours(1)
 
         /**
          * Long enough for a cold process to read its own settings off the disk, short enough to

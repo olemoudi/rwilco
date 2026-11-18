@@ -34,10 +34,12 @@ import java.time.LocalTime
 /**
  * The two rules of 0.210.0, through the real doors (owner, 2026-11-18):
  *
- * - **A ring a place set off ignores the night.** "Cuando salga de casa" at four in the morning
- *   rings; a clock ring at the same hour stays hushed, as it always has.
- * - **The safety net's ICYMI only goes out when nothing about the reminder is in the shade.** With
- *   its ring's card still open the word is held back, and the moment's turn is spent all the same.
+ * - **A ring a place set off ignores the night** (0.210.0), unless Settings says places keep it
+ *   too (0.212.0). "Cuando salga de casa" at four in the morning rings; a clock ring at the same
+ *   hour stays hushed, as it always has.
+ * - **The safety net's ICYMI never goes out while a card about the reminder is showing in the
+ *   shade** (0.211.0, 0.213.0). It is held, not spent: once the card is gone — swiped, or lost to a
+ *   reboot — the next look says it.
  *
  * What makes a card loud is its channel, so that is what is read: a hushed ring goes out on a
  * channel with no sound.
@@ -139,7 +141,7 @@ class NightPlaceAndNetTest {
     }
 
     @Test
-    fun theIcymiWaitsWhileTheRingsOwnCardIsStillInTheShade() = runBlocking {
+    fun theIcymiWaitsWhileTheRingsOwnCardIsShowingAndComesOnceItIsGone() = runBlocking {
         // Rang two days ago and never answered: the net's word is due (a day, with nothing next).
         val gone = Trigger.AtDateTime(LocalDateTime.ofInstant(app.clock.instant().minus(Duration.ofDays(2)), app.clock.zone))
         val rang = reminder("net-held", TriggerRule(gone), lastFiredAgo = Duration.ofDays(2))
@@ -152,9 +154,22 @@ class NightPlaceAndNetTest {
 
         Thread.sleep(500)
         assertNull("an ICYMI went out beside the card it is about", manager.activeNotifications.firstOrNull { it.id == AlertNotifications.nudgeNotificationId("net-held") })
-        val held = app.repository.get("net-held")!!
-        assertNotNull("the turn was not spent: the re-arm would hand the word straight back", held.nudgedAt)
+        assertNull("held is not spent: the word must still be owed", app.repository.get("net-held")!!.nudgedAt)
+        assertNotNull("nothing says when to look again", app.netHolds.until("net-held"))
         assertFalse("nothing was said, so nothing says it was", app.repository.history("net-held").any { it.kind == FiringKind.NET })
+
+        // The card swiped away (or lost to a reboot), and the next look comes round.
+        manager.cancel(AlertNotifications.notificationId("net-held"))
+        app.netHolds.hold("net-held", app.clock.instant().minusSeconds(1))
+        app.firing.nudge("net-held")
+
+        assertNotNull(
+            "with the card gone the held ICYMI must go out",
+            waitFor { manager.activeNotifications.firstOrNull { it.id == AlertNotifications.nudgeNotificationId("net-held") } },
+        )
+        assertNotNull("said now, so spent now", app.repository.get("net-held")!!.nudgedAt)
+        assertNull("and nothing left held", app.netHolds.until("net-held"))
+        assertEquals(FiringKind.NET, app.repository.history("net-held").first().kind)
     }
 
     @Test

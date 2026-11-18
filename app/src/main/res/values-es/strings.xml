@@ -934,7 +934,7 @@
     <string name="notif_net_subtext_waiting_arrive">Sigue esperando a que llegues a %1$s</string>
     <string name="notif_net_subtext_waiting_leave">Sigue esperando a que salgas de %1$s</string>
     <string name="settings_net_title">Red de seguridad</string>
-    <string name="settings_net_about">La red de seguridad vigila todos los recordatorios; no hay nada que activar, porque nadie sabe de antemano cuál se va a escapar. Uno se escapa cuando suena y no lo atiendes nunca, cuando su momento llega con alguna condición cerrada y ya no le queda ninguno en el que sonar, cuando sus horas y sus momentos no se cruzan nunca, o cuando una espera en un lugar se alarga demasiado. Sea cual sea, recibes un aviso discreto, una sola vez y sólo si no tienes ya en la barra una notificación suya: una tarjeta y nunca la pantalla, a media voz mientras estás levantado y en silencio mientras duermes. Estos números son lo que significa «más tarde».</string>
+    <string name="settings_net_about">La red de seguridad vigila todos los recordatorios; no hay nada que activar, porque nadie sabe de antemano cuál se va a escapar. Uno se escapa cuando suena y no lo atiendes nunca, cuando su momento llega con alguna condición cerrada y ya no le queda ninguno en el que sonar, cuando sus horas y sus momentos no se cruzan nunca, o cuando una espera en un lugar se alarga demasiado. Sea cual sea, recibes un aviso discreto, una sola vez, y nunca mientras tengas a la vista en la barra una notificación suya (si la tienes, espera a que la quites): una tarjeta y nunca la pantalla, a media voz mientras estás levantado y en silencio mientras duermes. Estos números son lo que significa «más tarde».</string>
     <string name="settings_net_after">Como mucho espera</string>
     <string name="settings_net_after_hint">Y es toda la espera cuando al recordatorio no le queda nada por sonar: una fecha que ya pasó, una cuenta atrás agotada. No viene nada detrás, así que no hay prisa.</string>
     <string name="settings_net_after_value">%1$d h</string>
@@ -1859,6 +1859,10 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_213_0">
+
+        <item>El ICYMI espera mientras tengas a la vista en la barra una notificación de ese recordatorio, y ya no se pierde: en cuanto la quitas con el dedo o desaparece tras reiniciar el móvil, llega en menos de una hora. Antes, si a su hora la tarjeta seguía ahí, ese ICYMI ya no salía nunca.</item>
+    </string-array>
     <string-array name="whats_new_0_212_0">
 
         <item>Que lo que salta en un lugar suene de noche ahora es un interruptor: Ajustes → Tu día → «Los lugares suenan también de noche», justo debajo de tus horas. Viene encendido; apagado, «cuando salga de casa» a las cuatro llega en silencio como todo lo demás.</item>

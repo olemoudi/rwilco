@@ -361,6 +361,14 @@ fun Reminder.netDue(
     return NetDue(about.plus(wait), about, word)
 }
 
+/**
+ * When the net's alarm goes off: its word's moment, or later while that word is held back because
+ * a card about the reminder is still showing in the shade ([heldUntil], the app's `NetHolds`).
+ * Never earlier, and nothing at all when there is no word to say.
+ */
+fun netAlarmAt(due: Instant?, heldUntil: Instant?): Instant? =
+    due?.let { if (heldUntil != null && heldUntil > it) heldUntil else it }
+
 /** Just the moment, for the scheduler, which only has an alarm to set. */
 fun Reminder.nudgeAt(
     now: Instant,

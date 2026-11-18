@@ -32,6 +32,7 @@ import dev.rwilco.model.TriggerRule
 import dev.rwilco.model.Wake
 import dev.rwilco.model.lapseAt
 import dev.rwilco.model.missedFire
+import dev.rwilco.model.netAlarmAt
 import dev.rwilco.model.nudgeAt
 import dev.rwilco.model.nextPrompt
 import dev.rwilco.model.nextWake
@@ -61,6 +62,8 @@ class ReminderScheduler(
     private val repository: ReminderRepository,
     private val settingsStore: SettingsStore,
     private val clock: Clock,
+    /** The net's words held back while a card about them is showing; see [NetHolds]. */
+    private val netHolds: NetHolds? = null,
 ) {
 
     private val alarms = context.getSystemService(AlarmManager::class.java)
@@ -141,7 +144,11 @@ class ReminderScheduler(
             // [Reminder.armedFor]: that column means "a firing is owed at this moment", and a
             // net's moment recorded there would have the catch-up RING the reminder rather than
             // whisper about it (missedFire), and spend the moment while it was at it.
-            armNudge(reminder, reminder.nudgeAt(now, zone, defaultTime, settings.safetyNet, dayStart, settings.dayShape))
+            // At its word's moment — or, while that word waits for a card about the same reminder
+            // to leave the shade, at the next look ([netAlarmAt], NetHolds). No word, no hold.
+            val due = reminder.nudgeAt(now, zone, defaultTime, settings.safetyNet, dayStart, settings.dayShape)
+            if (due == null) netHolds?.clear(reminder.id)
+            armNudge(reminder, netAlarmAt(due, netHolds?.until(reminder.id)))
             armLapse(reminder, now)
             // A routine's next question, on its own alarm and deliberately off [Reminder.armedFor]
             // for the same reason the net's is: a question is not a firing owed.
@@ -196,6 +203,8 @@ class ReminderScheduler(
         // ringing is the armed-moment check in ReminderFiring.fire, not this list.
         for (id in armed.toList() - seen) cancelRing(id)
         for (id in nudging.toList() - seen) cancelNudge(id)
+        // A held word about a reminder no longer in the list (deleted, finished) holds nothing.
+        netHolds?.keepOnly(seen)
         for (id in lapsing.toList() - seen) cancelLapse(id)
         for (id in asking.toList() - seen) cancelAsk(id)
         LockedMirror.update(context) { it.copy(wakes = mirrored) }
