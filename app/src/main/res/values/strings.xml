@@ -945,7 +945,7 @@
     <string name="notif_net_subtext_waiting_arrive">Still waiting for you to reach %1$s</string>
     <string name="notif_net_subtext_waiting_leave">Still waiting for you to leave %1$s</string>
     <string name="settings_net_title">Safety net</string>
-    <string name="settings_net_about">The safety net watches every reminder; there is nothing to switch on, because nobody knows in advance which one will get away. One gets away when it rings and is never answered, when its moment comes while a fence is shut and there is none left for it to ring at, when its hours and its moments never meet at all, or when a wait at a place goes on too long. Whichever it is, you get one quiet word about it, once: a card and never the screen, at half volume while you are up and silent while you sleep. These numbers are what «later» means.</string>
+    <string name="settings_net_about">The safety net watches every reminder; there is nothing to switch on, because nobody knows in advance which one will get away. One gets away when it rings and is never answered, when its moment comes while a fence is shut and there is none left for it to ring at, when its hours and its moments never meet at all, or when a wait at a place goes on too long. Whichever it is, you get one quiet word about it, once, and only if no card about it is already in the shade: a card and never the screen, at half volume while you are up and silent while you sleep. These numbers are what «later» means.</string>
     <string name="settings_net_after">At most it waits</string>
     <string name="settings_net_after_hint">And this is the whole wait when the reminder has nothing left to ring: a date that has been, a countdown that ran out. Nothing else is coming, so there is no hurry.</string>
     <string name="settings_net_after_value">%1$d h</string>
@@ -1872,6 +1872,10 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_211_0">
+
+        <item>The safety net\'s «ICYMI» no longer goes out while a card about the same reminder is in the shade: the ring still waiting for an answer, its routine question or an earlier ICYMI. It was saying the same thing twice. If you swiped the card away without answering, the ICYMI comes as before.</item>
+    </string-array>
     <string-array name="whats_new_0_210_0">
 
         <item>Anything set off at a place rings even at night: «when I leave home», «when I get to work» or «put off until I get home». Leaving home at four in the morning means you are awake, so it rings, buzzes and opens the screen as you asked, and repeats if it is the kind that insists.</item>

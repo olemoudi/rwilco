@@ -3074,7 +3074,10 @@ loud what DST and a change of zone do to a landing.
   gets away — and anybody who could answer it would not need a net. So it holds for every
   reminder; the switch, the red mark on the card and the chip that filtered by it are all gone,
   and what is left to decide is only how long it waits. Said **once per moment**
-  (`Reminder.nudgedAt`) and **at any hour**, quietly: `CHANNEL_NET` is
+  (`Reminder.nudgedAt`) and **only where nothing about the reminder is in the shade already**
+  (0.211.0, owner 2026-11-18): with its ring's card, its question or an earlier word still open
+  (`AlertNotifications.cardOpen`), the word is held back and the moment's turn is spent all the
+  same (`nudgedAt`, no NET line), or the re-arm would hand it straight back. **At any hour**, quietly: `CHANNEL_NET` is
   `IMPORTANCE_LOW`, silent, still, never a screen and never pinned — the same card with the same
   three buttons — "hecho" and the two snoozes the settings chose — on a line that says *puede
   que se te haya pasado* and a clock counting up from

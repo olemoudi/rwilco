@@ -125,4 +125,37 @@ class NightPlaceAndNetTest {
         assertNotNull("the timer did not ring at all", clockCard)
         assertFalse("a clock ring in the night made a noise", soundsOn(clockCard!!.notification.channelId))
     }
+
+    @Test
+    fun theIcymiWaitsWhileTheRingsOwnCardIsStillInTheShade() = runBlocking {
+        // Rang two days ago and never answered: the net's word is due (a day, with nothing next).
+        val gone = Trigger.AtDateTime(LocalDateTime.ofInstant(app.clock.instant().minus(Duration.ofDays(2)), app.clock.zone))
+        val rang = reminder("net-held", TriggerRule(gone), lastFiredAgo = Duration.ofDays(2))
+        app.repository.save(rang)
+        // Its card is still there, the way a ring nobody answered leaves it.
+        AlertNotifications.post(app, rang, FiringPlan(fullScreen = false, notification = true, sound = false, vibrate = false), late = null, fullScreen = false)
+        assertNotNull("the ring's card never went up", ringCard("net-held"))
+
+        app.firing.nudge("net-held")
+
+        Thread.sleep(500)
+        assertNull("an ICYMI went out beside the card it is about", manager.activeNotifications.firstOrNull { it.id == AlertNotifications.nudgeNotificationId("net-held") })
+        val held = app.repository.get("net-held")!!
+        assertNotNull("the turn was not spent: the re-arm would hand the word straight back", held.nudgedAt)
+        assertFalse("nothing was said, so nothing says it was", app.repository.history("net-held").any { it.kind == FiringKind.NET })
+    }
+
+    @Test
+    fun withTheCardGoneTheIcymiGoesOutAsItAlwaysDid() = runBlocking {
+        val gone = Trigger.AtDateTime(LocalDateTime.ofInstant(app.clock.instant().minus(Duration.ofDays(2)), app.clock.zone))
+        app.repository.save(reminder("net-said", TriggerRule(gone), lastFiredAgo = Duration.ofDays(2)))
+
+        app.firing.nudge("net-said")
+
+        assertNotNull(
+            "with nothing in the shade the ICYMI must go out",
+            waitFor { manager.activeNotifications.firstOrNull { it.id == AlertNotifications.nudgeNotificationId("net-said") } },
+        )
+        assertEquals(FiringKind.NET, app.repository.history("net-said").first().kind)
+    }
 }

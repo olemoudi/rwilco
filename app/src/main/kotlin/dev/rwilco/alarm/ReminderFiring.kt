@@ -757,6 +757,19 @@ class ReminderFiring(
             scheduler.rearmAll()
             return@withLock
         }
+        // **Only where nothing about it is in the shade already** (owner, 2026-11-18). The ring's
+        // own card still there, a routine's question, an earlier word: any of them is this
+        // reminder in front of somebody already, and an ICYMI beside it says the same thing twice.
+        // The moment's turn is spent all the same — `nudgedAt`, with no NET line in the history,
+        // because nothing was said — or the re-arm would hand the same word straight back. When
+        // the system will not say what is open, the word goes out as it always did.
+        if (AlertNotifications.cardOpen(AlertNotifications.openCards(context), id)) {
+            Log.i(TAG, "$id: the safety net holds its word; a card about it is still open")
+            Diag.note(TAG_DIAG, "r=${short(id)} net held back (${due.word}): a card about it is still open")
+            repository.setNudgedAt(id, now)
+            scheduler.rearmAll()
+            return@withLock
+        }
         Log.i(TAG, "safety net for $id, about the moment at ${due.about} (${due.word})")
         Diag.note(TAG_DIAG, "r=${short(id)} NET said (${due.word}), about the moment at ${due.about}")
         repository.setNudgedAt(id, now)
