@@ -82,7 +82,7 @@ internal fun staleAlertChannels(existing: List<String>, live: Set<String>): List
  * which reminder and for which rule, held though owed nothing (the net's word), and whether the
  * tap rings ([ReminderScheduler.EXTRA_TAP_RINGS]). [postedAt] is when the card went up.
  */
-internal data class CardTap(val reminderId: String, val ruleIndex: Int?, val anyway: Boolean, val rings: Boolean, val postedAt: Long)
+internal data class CardTap(val reminderId: String, val ruleIndex: Int?, val anyway: Boolean, val rings: Boolean, val postedAt: Long, val byPlace: Boolean = false)
 
 /**
  * What a tap on the collapsed bundle opens: every ring under it, in the order they came in, one
@@ -93,7 +93,7 @@ internal fun bundleTaps(cards: List<CardTap>): List<CardTap> =
     cards.groupBy { it.reminderId }.values
         .map { same ->
             (same.firstOrNull { !it.anyway } ?: same.first())
-                .copy(rings = same.any { it.rings }, postedAt = same.minOf { it.postedAt })
+                .copy(rings = same.any { it.rings }, postedAt = same.minOf { it.postedAt }, byPlace = same.any { it.byPlace })
         }
         .sortedBy { it.postedAt }
 
@@ -142,6 +142,7 @@ object AlertNotifications {
     private const val TAP_RULE = "dev.rwilco.tap.rule"
     private const val TAP_ANYWAY = "dev.rwilco.tap.anyway"
     private const val TAP_RINGS = "dev.rwilco.tap.rings"
+    private const val TAP_BY_PLACE = "dev.rwilco.tap.by_place"
 
     /**
      * How long a "hecho" somebody gave leaves its "deshacer" card: long enough to catch a thumb
@@ -597,6 +598,8 @@ object AlertNotifications {
         nudge: NetWord? = null,
         /** The moment that word is about, which its clock counts up from. */
         nudgeAbout: Instant? = null,
+        /** Set off by a place, which the night does not hush ([dev.rwilco.model.ringsByPlace]): the screen it opens is told. */
+        byPlace: Boolean = false,
     ) {
         // A file that will not open right now plays as the system tone (Sounds.uri), and the
         // channel has to be NAMED for the tone it will actually carry: a channel's sound is
@@ -641,6 +644,7 @@ object AlertNotifications {
             anyway = nudge != null,
             tapped = true,
             rings = late == null && nudge == null && plan.tapRings,
+            byPlace = byPlace && nudge == null,
         )
         // **Why it rang**, in the words the form used when it was written — not the reminder's
         // own text again, which the title already carries and which said nothing twice. The
@@ -707,6 +711,7 @@ object AlertNotifications {
                     putInt(TAP_RULE, ruleIndex ?: -1)
                     putBoolean(TAP_ANYWAY, nudge != null)
                     putBoolean(TAP_RINGS, late == null && nudge == null && plan.tapRings)
+                    putBoolean(TAP_BY_PLACE, byPlace && nudge == null)
                 },
             )
             // When it rang, said outright. On a missed one it counts up instead — "this should
@@ -797,7 +802,7 @@ object AlertNotifications {
         // own decision on top of that — see AlertPresenter: an app open in front of somebody
         // gets the banner and nothing else.
         if (fullScreen && late == null && nudge == null) {
-            builder.setFullScreenIntent(activityIntent(context, reminder.id, ruleIndex), true)
+            builder.setFullScreenIntent(activityIntent(context, reminder.id, ruleIndex, byPlace = byPlace), true)
         }
         // "Hasta que reciba caso" means what it says: this one cannot be flicked away in the
         // half-asleep swipe that clears the shade. Everything else stays swipeable, because
@@ -946,6 +951,7 @@ object AlertNotifications {
                     anyway = extras.getBoolean(TAP_ANYWAY, false),
                     rings = extras.getBoolean(TAP_RINGS, false),
                     postedAt = card.postTime,
+                    byPlace = extras.getBoolean(TAP_BY_PLACE, false),
                 )
             },
         )
@@ -953,7 +959,7 @@ object AlertNotifications {
 
     /** The start one card's tap makes ([activityIntent]), for the bundle to make for each of its cards. */
     internal fun tapIntent(context: Context, tap: CardTap): Intent =
-        alertIntent(context, tap.reminderId, tap.ruleIndex, anyway = tap.anyway, tapped = true, rings = tap.rings)
+        alertIntent(context, tap.reminderId, tap.ruleIndex, anyway = tap.anyway, tapped = true, rings = tap.rings, byPlace = tap.byPlace)
 
     private fun bundleIntent(context: Context): PendingIntent = PendingIntent.getActivity(
         context,
@@ -1063,10 +1069,11 @@ object AlertNotifications {
         anyway: Boolean = false,
         tapped: Boolean = false,
         rings: Boolean = false,
+        byPlace: Boolean = false,
     ): PendingIntent = PendingIntent.getActivity(
         context,
         (if (anyway) 1 else 0) or (if (tapped) 2 else 0),
-        alertIntent(context, reminderId, ruleIndex, anyway, tapped, rings),
+        alertIntent(context, reminderId, ruleIndex, anyway, tapped, rings, byPlace),
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
     )
 
@@ -1077,6 +1084,7 @@ object AlertNotifications {
         anyway: Boolean,
         tapped: Boolean,
         rings: Boolean,
+        byPlace: Boolean = false,
     ): Intent = Intent(context, AlertActivity::class.java)
         .setData(ReminderScheduler.reminderUri(reminderId))
         .apply {
@@ -1084,6 +1092,7 @@ object AlertNotifications {
             if (anyway) putExtra(ReminderScheduler.EXTRA_ANYWAY, true)
             if (tapped) putExtra(ReminderScheduler.EXTRA_TAPPED, true)
             if (rings) putExtra(ReminderScheduler.EXTRA_TAP_RINGS, true)
+            if (byPlace) putExtra(ReminderScheduler.EXTRA_BY_PLACE, true)
         }
         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 

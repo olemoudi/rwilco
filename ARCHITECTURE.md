@@ -3009,6 +3009,13 @@ loud what DST and a change of zone do to a landing.
   it is shown without a sound. `hushed()` drops `insistent` with the other two on purpose: a
   repeat *is* the sound again in a few minutes, so leaving it on would schedule a chain of silent
   re-posts through the night, and `playAgain` ends the chain outright rather than posting one.
+  **A ring a place set off is the one exception** (0.210.0, owner 2026-11-18: «si un "cuando
+  salga de casa" salta a las 4am, debe sonar»; `ringsByPlace`): a place trigger or a «posponer
+  hasta llegar a…» rings with everything it asked for, repeats included — walking out of the door
+  at four means somebody is up, and a silent card there is the reminder lost at its one moment.
+  Only a place that *rang* it: a clock rule fenced by a place, a clock snooze after a place ring
+  and a routine's questions keep the night. The row cannot say it (a place snooze rings with no
+  rule), so the firing carries it as `EXTRA_BY_PLACE` to the screen, the card's tap and the repeats.
   Asked at three doors — `ReminderFiring.fire`, `ReminderFiring.playAgain`, and `AlertActivity`,
   which builds its own plan from the row and would otherwise start the alarm for anybody tapping
   the card at three in the morning. **The rehearsal is the one exemption** (`TestAlert.isTest`):

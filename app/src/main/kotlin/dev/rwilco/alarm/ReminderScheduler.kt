@@ -509,6 +509,16 @@ class ReminderScheduler(
         fun tapRingsIn(intent: Intent): Boolean = intent.getBooleanExtra(EXTRA_TAP_RINGS, false)
 
         /**
+         * The ring was set off by a place ([dev.rwilco.model.ringsByPlace]), which the hours
+         * somebody is asleep do not hush (owner, 2026-11-18). Carried to every door that builds
+         * its own noise from the row — the alert screen and the repeats of "hasta que reciba
+         * caso" — because the row cannot say it: a «posponer hasta llegar a…» rings with no rule.
+         */
+        const val EXTRA_BY_PLACE = "by_place"
+
+        fun byPlaceIn(intent: Intent): Boolean = intent.getBooleanExtra(EXTRA_BY_PLACE, false)
+
+        /**
          * What the scheduling of a list depends on in the settings; anything else changing must
          * not re-arm it. The net's numbers are here because the nudge is an alarm ([armNudge]):
          * "avísame 36 h después" moved to 12 used to leave every net armed on the old numbers

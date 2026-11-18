@@ -10,6 +10,7 @@ import dev.rwilco.diag.Diag
 import dev.rwilco.data.SettingsStore
 import dev.rwilco.model.dayShape
 import dev.rwilco.model.hushedByTheHour
+import dev.rwilco.model.ringsByPlace
 import dev.rwilco.model.hushed
 import dev.rwilco.model.AppSettings
 import dev.rwilco.model.FiringOutcome
@@ -370,9 +371,11 @@ class ReminderFiring(
         // say, and they do it by the moment the firing is *for* as well as by the hour it
         // arrives — see [hushedByTheHour]. The rehearsal is the one exemption there can be:
         // somebody pressing "probar una alerta" is asking whether the noise works, and the one
-        // answer that must never be silence is that one.
-        val asleep = !TestAlert.isTest(id) &&
-            hushedByTheHour(rangFor, now, clock.zone, settings.dayShape)
+        // answer that must never be silence is that one. **And a place is the other** (owner,
+        // 2026-11-18): "cuando salga de casa" at four in the morning rings — see [ringsByPlace].
+        val byPlace = reminder.ringsByPlace(ruleIndex, viaSnoozePlace)
+        val night = hushedByTheHour(rangFor, now, clock.zone, settings.dayShape)
+        val asleep = !TestAlert.isTest(id) && !byPlace && night
         // **A contact is told about quietly, whatever its row says.** The plan is fixed here
         // rather than read from the actions on purpose: a row restored from a vault, or one that
         // carried FULL_SCREEN before it became a contact, must not be able to take the screen or
@@ -382,7 +385,7 @@ class ReminderFiring(
         // ring on time" note — and quietly, without the screen: it has made its noise once.
         val plan = if (reminder.isContact) CONTACT_PLAN
         else firingPlan(reminder.actions).let { if (asleep) it.hushed() else it }.let { if (announced) it.hushed().copy(fullScreen = false) else it }
-        Diag.note(TAG_DIAG, "r=${short(id)} RANG for $rangFor rule=$ruleIndex${if (late != null) " (late for $late)" else ""}${if (viaSnoozePlace) " (place snooze)" else ""}${if (viaCondition) " (its place, in the stretch)" else ""} plan=${plan.summary()}")
+        Diag.note(TAG_DIAG, "r=${short(id)} RANG for $rangFor rule=$ruleIndex${if (late != null) " (late for $late)" else ""}${if (viaSnoozePlace) " (place snooze)" else ""}${if (viaCondition) " (its place, in the stretch)" else ""}${if (byPlace && night) " (a place: rings through the night)" else ""} plan=${plan.summary()}")
         // From the sello to the screen in one piece: the receiver runs this under a timeout, and
         // a cancellation landing between markFired and show spent a moment nothing ever showed
         // — one missedFire could never see again, because the row said it had rung.
@@ -406,12 +409,12 @@ class ReminderFiring(
                     // Never the screen, never a sound: its own quiet card, and one answer.
                     AlertNotifications.contact(context, reminder, Duration.between(reminder.routineAnchor(), rangFor))
                 } else {
-                    AlertPresenter.show(context, if (viaSnoozePlace) reminder.copy(snoozedToPlace = null) else reminder, plan, presentedLate, settings.vibration, settings.soundFor(plan), ruleIndex = ruleIndex, defaultTime = settings.defaultTime, dayStart = settings.dayStart, snoozes = settings.notificationOffers, customMinutes = settings.snoozeCustomMinutes)
+                    AlertPresenter.show(context, if (viaSnoozePlace) reminder.copy(snoozedToPlace = null) else reminder, plan, presentedLate, settings.vibration, settings.soundFor(plan), ruleIndex = ruleIndex, defaultTime = settings.defaultTime, dayStart = settings.dayStart, snoozes = settings.notificationOffers, customMinutes = settings.snoozeCustomMinutes, byPlace = byPlace)
                 }
                 // "Hasta que reciba caso": the first play has gone out, so line up the second.
                 if (plan.insistent) {
                     nextSoundIn(alerted = 1, rounds = settings.soundRounds, gapMinutes = settings.soundGapMinutes)
-                        ?.let { gap -> repeater.schedule(id, played = 1, rangAt = rangFor, at = now + gap, ruleIndex = ruleIndex) }
+                        ?.let { gap -> repeater.schedule(id, played = 1, rangAt = rangFor, at = now + gap, ruleIndex = ruleIndex, byPlace = byPlace) }
                 }
             } catch (t: Throwable) {
                 // The moment is spent whatever happened on the way to the screen; what must not
@@ -434,7 +437,7 @@ class ReminderFiring(
      * and it puts the card back in front of somebody who has scrolled past it. Never the
      * full-screen takeover: once was the alarm, this is the reminder of the alarm.
      */
-    suspend fun playAgain(id: String, played: Int, rangAt: Instant, ruleIndex: Int? = null) = lock.withLock {
+    suspend fun playAgain(id: String, played: Int, rangAt: Instant, ruleIndex: Int? = null, byPlace: Boolean = false) = lock.withLock {
         val reminder = repository.get(id) ?: return@withLock
         val now = clock.instant()
         if (reminder.status != Status.ACTIVE) return@withLock
@@ -449,15 +452,16 @@ class ReminderFiring(
         // A round of "hasta que reciba caso" started in the evening can still be going at two
         // in the morning, and the whole of a repeat is the sound: hushed, there is nothing left
         // for it to do. So the chain simply ends — the card the first firing left is still in
-        // the tray, and the reminder is still owed an answer in the morning.
-        if (!TestAlert.isTest(id) && hushedByTheHour(rangAt, now, clock.zone, settings.dayShape)) {
+        // the tray, and the reminder is still owed an answer in the morning. Not a place's ring,
+        // which the night does not hush ([ringsByPlace]): its repeats go on like its first play.
+        if (!TestAlert.isTest(id) && !byPlace && hushedByTheHour(rangAt, now, clock.zone, settings.dayShape)) {
             Diag.note(TAG_DIAG, "r=${short(id)} repeat dropped (asleep)")
             return@withLock
         }
         Log.i(TAG, "$id has not been dealt with; alert ${played + 1} of ${settings.soundRounds}")
-        AlertPresenter.show(context, reminder, plan, late = null, vibration = settings.vibration, sound = settings.soundFor(plan), repeat = true, ruleIndex = ruleIndex, defaultTime = settings.defaultTime, dayStart = settings.dayStart, snoozes = settings.notificationOffers, customMinutes = settings.snoozeCustomMinutes)
+        AlertPresenter.show(context, reminder, plan, late = null, vibration = settings.vibration, sound = settings.soundFor(plan), repeat = true, ruleIndex = ruleIndex, defaultTime = settings.defaultTime, dayStart = settings.dayStart, snoozes = settings.notificationOffers, customMinutes = settings.snoozeCustomMinutes, byPlace = byPlace)
         nextSoundIn(played + 1, settings.soundRounds, settings.soundGapMinutes)
-            ?.let { gap -> repeater.schedule(id, played + 1, rangAt, now + gap, ruleIndex) }
+            ?.let { gap -> repeater.schedule(id, played + 1, rangAt, now + gap, ruleIndex, byPlace) }
     }
 
     /**

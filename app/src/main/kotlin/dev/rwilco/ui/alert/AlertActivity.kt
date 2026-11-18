@@ -91,6 +91,9 @@ class AlertActivity : ComponentActivity() {
     private val ringing = mutableStateListOf<String>()
     private val loaded = mutableStateMapOf<String, Reminder>()
     private val rules = mutableStateMapOf<String, Int>()
+
+    /** Reminders on the screen whose ring a place set off: the night does not hush them ([ReminderScheduler.EXTRA_BY_PLACE]). */
+    private val byPlace = mutableStateListOf<String>()
     private val watches = mutableMapOf<String, Job>()
 
     /**
@@ -217,6 +220,7 @@ class AlertActivity : ComponentActivity() {
         // so an alert opened from a card and then turned sideways would have rung the alarm it
         // was careful not to ring in the first place.
         val wasQuiet = savedInstanceState?.getStringArrayList(STATE_SILENT).orEmpty()
+        savedInstanceState?.getStringArrayList(STATE_BY_PLACE)?.let { byPlace += it }
         focused = savedInstanceState?.getString(STATE_FOCUSED)
         savedInstanceState?.getStringArrayList(STATE_RINGING)?.forEachIndexed { index, id ->
             val rule = savedInstanceState.getIntArray(STATE_RULES)?.getOrNull(index)?.takeIf { it >= 0 }
@@ -251,7 +255,8 @@ class AlertActivity : ComponentActivity() {
                 .map { reminder ->
                     val plan = firingPlan(reminder.actions)
                     val momentFor = reminder.lastFiredAt ?: app.clock.instant()
-                    if (hushedByTheHour(momentFor, app.clock.instant(), zone, current.dayShape)) plan.hushed() else plan
+                    // Not a ring a place set off: the one exception to the night ([ringsByPlace]).
+                    if (reminder.id !in byPlace && hushedByTheHour(momentFor, app.clock.instant(), zone, current.dayShape)) plan.hushed() else plan
                 }
             val sound = plans.any { it.sound }
             val vibrate = plans.any { it.vibrate }
@@ -423,6 +428,11 @@ class AlertActivity : ComponentActivity() {
         // A tap is quiet, except on the card of an alarm that is not over until it is answered
         // (0.162.0): that one opens ringing, "Silenciar" first. See [tapRings].
         val quiet = held || (tapped && !ReminderScheduler.tapRingsIn(intent))
+        // Whether the night may hush it is the arriving ring's to say: a place's ring is marked,
+        // any other ring of the same reminder is not. A quiet tap makes no noise and says nothing.
+        if (!quiet) {
+            if (!ReminderScheduler.byPlaceIn(intent)) byPlace.remove(id) else if (id !in byPlace) byPlace += id
+        }
         // **Each step between a full-screen ring and its noise, written down** (0.161.0). A
         // reminder shown full screen left no line at all when its noise never came, and "the
         // system never opened the screen", "it opened and was never seen" and "it was taken off
@@ -518,6 +528,7 @@ class AlertActivity : ComponentActivity() {
         rules.remove(id)
         anyway.remove(id)
         silenced.remove(id)
+        byPlace.remove(id)
         if (ringing.isEmpty()) close()
     }
 
@@ -662,6 +673,7 @@ class AlertActivity : ComponentActivity() {
         outState.putIntArray(STATE_RULES, IntArray(ringing.size) { rules[ringing[it]] ?: -1 })
         outState.putStringArrayList(STATE_ANYWAY, ArrayList(anyway))
         outState.putStringArrayList(STATE_SILENT, ArrayList(silenced))
+        outState.putStringArrayList(STATE_BY_PLACE, ArrayList(byPlace))
         outState.putString(STATE_FOCUSED, focused)
         outState.putBoolean(STATE_HUSHED, hushedOnPurpose)
     }
@@ -718,6 +730,7 @@ class AlertActivity : ComponentActivity() {
         const val STATE_RULES = "rules"
         const val STATE_ANYWAY = "anyway"
         const val STATE_SILENT = "silenced"
+        const val STATE_BY_PLACE = "by_place"
         const val STATE_FOCUSED = "focused"
         const val STATE_HUSHED = "hushed"
         val SILENCING_KEYS = setOf(KeyEvent.KEYCODE_VOLUME_UP, KeyEvent.KEYCODE_VOLUME_DOWN, KeyEvent.KEYCODE_VOLUME_MUTE)

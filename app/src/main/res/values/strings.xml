@@ -1872,6 +1872,11 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_210_0">
+
+        <item>Anything set off at a place rings even at night: «when I leave home», «when I get to work» or «put off until I get home». Leaving home at four in the morning means you are awake, so it rings, buzzes and opens the screen as you asked, and repeats if it is the kind that insists.</item>
+        <item>It is the only exception to your sleeping hours: anything with an hour of its own, even one that depends on where you are («at 9, and only if I am at home»), still arrives silently while you sleep. Settings → Your day says so.</item>
+    </string-array>
     <string-array name="whats_new_0_209_0">
 
         <item>Dictating: the microphone starts opening while you are still holding the button, so it is listening by the time the sheet appears and words said a beat early are no longer lost. Until it is ready, the sheet asks you to wait for the microphone rather than inviting you to talk.</item>
@@ -3313,7 +3318,7 @@
     <string name="sheet_repeat_monthly_nth">A weekday</string>
     <string name="sheet_repeat_every_value">%1$d</string>
     <string name="settings_awake">The hours you are up</string>
-    <string name="settings_awake_hint">When your day starts and ends. A day «at any time» rings as your day starts; «tomorrow morning», or a date with no hour, that would find you asleep moves to the hour you get up; and until halfway through the night, «tomorrow» is still the day you wake up to. Outside these hours, anything with an hour of its own rings at that hour, but silently.</string>
+    <string name="settings_awake_hint">When your day starts and ends. A day «at any time» rings as your day starts; «tomorrow morning», or a date with no hour, that would find you asleep moves to the hour you get up; and until halfway through the night, «tomorrow» is still the day you wake up to. Outside these hours, anything with an hour of its own rings at that hour, but silently. Anything set off at a place —«when I leave home»— always rings: if you are arriving or leaving, you are awake.</string>
     <string name="settings_awake_weekday">Weekdays</string>
     <string name="settings_awake_weekend">Weekends</string>
     <string name="settings_awake_wake">Up at</string>

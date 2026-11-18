@@ -476,6 +476,24 @@ fun FiringPlan.hushed(): FiringPlan = copy(sound = false, vibrate = false, insis
 fun hushedByTheHour(momentFor: Instant, now: Instant, zone: ZoneId, shape: DayShape): Boolean =
     !shape.awakeAt(now, zone) || !shape.awakeAt(momentFor, zone)
 
+/**
+ * Whether a ring was set off by a place: one of its place triggers ("cuando salga de casa", "al
+ * llegar al trabajo") or a «posponer hasta llegar a…» reached.
+ *
+ * **The one exception to the hours somebody is asleep** (owner, 2026-11-18): [hushedByTheHour]
+ * does not apply to it. A place is something the person is doing at that hour — walking out of
+ * the door at four in the morning means they are up and on their way — and a ring about it that
+ * arrives silent is the reminder lost at the one moment it was for. Everything the ring asked for
+ * goes ahead: the sound, the buzz, the screen, "hasta que reciba caso".
+ *
+ * Only a place that *rang* it. A clock rule fenced by a place ("a las 9, y sólo si estoy en
+ * casa", including the arrival that lets it through inside its stretch) is still a moment on the
+ * clock and keeps the night like every other ring; so does a snooze on the clock after a place
+ * ring, and a routine's question, which never rings.
+ */
+fun Reminder.ringsByPlace(ruleIndex: Int?, viaSnoozePlace: Boolean = false): Boolean =
+    viaSnoozePlace || ruleIndex?.let { rules.getOrNull(it) }?.trigger is Trigger.Location
+
 fun firingPlan(actions: Set<Action>): FiringPlan = FiringPlan(
     fullScreen = Action.FULL_SCREEN in actions,
     // A full-screen alert always leaves a notification behind: it is what the person finds if

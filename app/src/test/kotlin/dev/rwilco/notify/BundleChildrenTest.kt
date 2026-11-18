@@ -65,8 +65,15 @@ class BundleChildrenTest {
  */
 class BundleTapsTest {
 
-    private fun tap(id: String, at: Long, anyway: Boolean = false, rings: Boolean = false, rule: Int? = null) =
-        CardTap(id, rule, anyway, rings, at)
+    private fun tap(id: String, at: Long, anyway: Boolean = false, rings: Boolean = false, rule: Int? = null, byPlace: Boolean = false) =
+        CardTap(id, rule, anyway, rings, at, byPlace)
+
+    @Test
+    fun `a ring a place set off keeps saying so when the bundle opens it`() {
+        // The night does not hush it (0.210.0): the screen the bundle opens must not either.
+        val opened = bundleTaps(listOf(tap("a", 50, anyway = true), tap("a", 10, rings = true, byPlace = true)))
+        assertEquals(listOf(tap("a", 10, rings = true, byPlace = true)), opened)
+    }
 
     @Test
     fun `in the order they came in`() {

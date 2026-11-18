@@ -394,6 +394,22 @@ class FiringTest {
     }
 
     @Test
+    fun `a ring set off by a place is the one exception to the night`() {
+        val nine = Trigger.AtTime(LocalTime.of(9, 0), emptySet())
+        val leavingHome = Trigger.Location(40.4169, -3.7035, 200, Presence.OUTSIDE, "Casa", onCrossing = true)
+        val r = reminder(nine, leavingHome)
+        assertTrue(r.ringsByPlace(ruleIndex = 1), "«cuando salga de casa» at four in the morning rings")
+        assertTrue(r.ringsByPlace(ruleIndex = null, viaSnoozePlace = true), "«posponer hasta llegar a casa» too")
+        assertFalse(r.ringsByPlace(ruleIndex = 0), "the clock rule beside it keeps the night")
+        assertFalse(r.ringsByPlace(ruleIndex = null), "a snooze on the clock, or a recurrence, keeps the night")
+        assertFalse(r.ringsByPlace(ruleIndex = 5), "a rule that is not there is not a place")
+        // A clock rule fenced by a place is still a moment on the clock, even when the arrival
+        // is what lets it through inside its stretch (`viaCondition` passes the clock rule).
+        val fenced = reminder(nine, conditions = listOf(Condition.AtPlace(40.4169, -3.7035, 200, "Casa")))
+        assertFalse(fenced.ringsByPlace(ruleIndex = 0))
+    }
+
+    @Test
     fun `the hours somebody is asleep take the noise out of a firing`() {
         // Up from 08:00 to 23:30 on a weekday, which is the default.
         val shape = DayShape.DEFAULT

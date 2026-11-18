@@ -126,6 +126,8 @@ object AlertPresenter {
         /** Passed straight through to the notification's buttons. */
         snoozes: List<SnoozeOffer> = AppSettings().notificationOffers,
         customMinutes: Int = DEFAULT_SNOOZE_MINUTES,
+        /** Set off by a place, which the night does not hush: the screen is told, as it builds its own noise. */
+        byPlace: Boolean = false,
     ) {
         // Every action turned off is an answer too: the moment passes without a word, and the
         // reminder is simply overdue on Home afterwards.
@@ -154,7 +156,7 @@ object AlertPresenter {
         // screen that never came. The card rings either way now, 0.163.0.)
         // With the screen off or locked, the notification's full-screen intent is what launches
         // the alert: the system does it for us, and doing it here as well would race with it.
-        val screenTaken = presentation == AlertPresentation.FULL_SCREEN && inUse && startAlert(context, reminder, ruleIndex)
+        val screenTaken = presentation == AlertPresentation.FULL_SCREEN && inUse && startAlert(context, reminder, ruleIndex, byPlace)
         val fullScreen = presentation == AlertPresentation.FULL_SCREEN && (screenTaken || !inUse)
         // A card whose tone the system plays leaves no other trace of where it went or how loud
         // it could be there; the screen's own tone says so on its `ring` line (0.161.0). Every
@@ -179,6 +181,7 @@ object AlertPresenter {
             dayStart = dayStart,
             snoozes = snoozes,
             customMinutes = customMinutes,
+            byPlace = byPlace,
         )
         // Notifications switched off make post() a silent no-op, and the moment is already
         // spent. The one thing left that can reach the person is the screen itself, which knows
@@ -187,16 +190,17 @@ object AlertPresenter {
         // what would have launched it, and a notification that never posted launches nothing.
         if (!screenTaken && wanted && !(repeat && inUse) && !NotificationManagerCompat.from(context).areNotificationsEnabled()) {
             Log.w(TAG, "notifications are off; trying the screen for ${reminder.id}")
-            startAlert(context, reminder, ruleIndex)
+            startAlert(context, reminder, ruleIndex, byPlace)
         }
     }
 
     /** The alert screen, started from here; false when the system would not let a background app start it. */
-    private fun startAlert(context: Context, reminder: Reminder, ruleIndex: Int?): Boolean = runCatching {
+    private fun startAlert(context: Context, reminder: Reminder, ruleIndex: Int?, byPlace: Boolean): Boolean = runCatching {
         context.startActivity(
             Intent(context, AlertActivity::class.java)
                 .setData(ReminderScheduler.reminderUri(reminder.id))
                 .apply { if (ruleIndex != null) putExtra(ReminderScheduler.EXTRA_RULE, ruleIndex) }
+                .apply { if (byPlace) putExtra(ReminderScheduler.EXTRA_BY_PLACE, true) }
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
         )
     }.onFailure { Log.w(TAG, "could not take the screen; the notification carries it", it) }.isSuccess

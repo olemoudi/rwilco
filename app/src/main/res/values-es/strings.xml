@@ -1857,6 +1857,11 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_210_0">
+
+        <item>Lo que salta en un lugar suena aunque sea de noche: «cuando salga de casa», «al llegar al trabajo» o «posponer hasta llegar a casa». Si sales de casa a las cuatro de la mañana estás despierto, así que el aviso suena, vibra y abre la pantalla como le pediste, y repite si es de los que insisten.</item>
+        <item>Es la única excepción a tus horas de sueño: lo que tiene hora propia, aunque dependa de dónde estés («a las 9, y sólo si estoy en casa»), sigue llegando en silencio mientras duermes. Ajustes → Tu día lo dice.</item>
+    </string-array>
     <string-array name="whats_new_0_209_0">
 
         <item>Dictado: el micrófono empieza a abrirse mientras aún mantienes pulsado el botón, así que ya escucha cuando aparece la hoja y no se pierden las palabras dichas un poco antes de tiempo. Hasta que está listo, la hoja te pide esperar al micrófono en vez de invitarte a hablar.</item>
@@ -3298,7 +3303,7 @@
     <string name="sheet_repeat_monthly_nth">Un día de la semana</string>
     <string name="sheet_repeat_every_value">%1$d</string>
     <string name="settings_awake">Tus horas despierto</string>
-    <string name="settings_awake_hint">Cuándo empieza y acaba tu día. Un día «a cualquier hora» suena al empezar tu día; «mañana por la mañana», o una fecha sin hora, que te pillarían durmiendo pasan a tu hora de levantarte; y hasta la mitad de la noche, «mañana» sigue siendo el día que empieza al despertarte. Fuera de estas horas, lo que tiene hora propia suena a su hora, pero en silencio.</string>
+    <string name="settings_awake_hint">Cuándo empieza y acaba tu día. Un día «a cualquier hora» suena al empezar tu día; «mañana por la mañana», o una fecha sin hora, que te pillarían durmiendo pasan a tu hora de levantarte; y hasta la mitad de la noche, «mañana» sigue siendo el día que empieza al despertarte. Fuera de estas horas, lo que tiene hora propia suena a su hora, pero en silencio. Lo que salta en un lugar —«cuando salga de casa»— suena siempre: si estás llegando o saliendo, estás despierto.</string>
     <string name="settings_awake_weekday">Entre semana</string>
     <string name="settings_awake_weekend">Fines de semana</string>
     <string name="settings_awake_wake">Te levantas a las</string>
