@@ -179,8 +179,9 @@ fun geminiInstruction(now: Instant, zone: ZoneId, settings: AppSettings): String
         Saved places (the only ones that exist): $places. Saved windows of the day: $windows.
         - "text": what to remember, without the when, in the sentence's own words and language, first letter capital.
         - Each rule is an event plus conditions that must hold when it happens. "match": ANY = any rule rings it (also for "A y B" with two moments: it rings twice); ALL = every rule must have happened, the last rings (only if said: "las dos cosas", "both"); TOGETHER = all true at the same instant (states, "a la vez").
-        - Events: AT (date YYYY-MM-DD + time HH:mm), DAY (date, no hour), DAY_RANGE (date..toDate), IN_MINUTES (minutes from now), BETWEEN_HOURS (time..toTime, optional days), RANDOM (times per period, between time..toTime), WEEKDAYS (days), ARRIVE/LEAVE (doorway in/out of a saved place, optional dwellMinutes 5-90), INSIDE/OUTSIDE (being in / away from a saved place), LEAVE_HERE (leaving where the phone is now).
+        - Events: AT (date YYYY-MM-DD + time HH:mm), DAY (date, no hour; time..toTime only for a stretch of that day it is due in), DAY_RANGE (date..toDate), IN_MINUTES (minutes from now), BETWEEN_HOURS (time..toTime, optional days), RANDOM (times per period, between time..toTime), WEEKDAYS (days), ARRIVE/LEAVE (doorway in/out of a saved place, optional dwellMinutes 5-90), INSIDE/OUTSIDE (being in / away from a saved place), LEAVE_HERE (leaving where the phone is now).
         - "Cuando llegue a X" is ARRIVE; "mientras esté / cuando esté en X" is INSIDE. "Por la tarde" next to a place is a HOURS condition from afternoon to evening; alone with a day it is that day at the afternoon hour. "Esta semana" is DAY_RANGE from today to Sunday.
+        - "Cualquier día de lunes a jueves", "algún día entre semana", "any weekday" is ONE day, never a recurrence: a DAY event on the first of those days from the start said ("a partir del 1 de febrero") or from today, with time..toTime if a stretch of hours or a saved window was said.
         - Conditions: HOURS (time..toTime), DATES (date..toDate), WEEKDAYS (days), MONTH_DAYS, MOVING (DRIVING/WALKING/ANY, only on ARRIVE/LEAVE), AT_PLACE/AWAY_FROM_PLACE (place).
         - recurrence: CALENDAR (every N unit, optional time, days for weeks, startDate), AFTER_DONE (comes back N unit after it is done), SINCE_DONE (a routine: every N unit since the last time it was done). deadline: BEFORE_TIME (time) or WITHIN_MINUTES.
         - actions only when said: fullScreen, untilAnswered (keeps ringing), silent, noVibration, notificationOnly.
@@ -205,7 +206,11 @@ fun GeminiReading.toHeard(now: Instant, zone: ZoneId, settings: AppSettings, her
 
     fun eventOf(event: GeminiEvent): Trigger? = when (event.kind) {
         "AT" -> date(event.date)?.let { d -> time(event.time)?.let { Trigger.AtDateTime(d.atTime(it)) } }
-        "DAY" -> date(event.date)?.let { Trigger.DayRandom(it) }
+        // The stretch of the day it is due in, when Gemini gives one ("en horario de atención").
+        "DAY" -> date(event.date)?.let { d ->
+            val window = time(event.time)?.let { from -> time(event.toTime)?.takeIf { it != from }?.let { DayWindow(from, it) } }
+            Trigger.DayRandom(d, window)
+        }
         "DAY_RANGE" -> date(event.date)?.let { from -> date(event.toDate)?.takeIf { !it.isBefore(from) }?.let { Trigger.DateRange(from, it) } }
         "IN_MINUTES" -> event.minutes?.takeIf { it in MIN_COUNTDOWN_MINUTES..MAX_COUNTDOWN_MINUTES }?.let { Trigger.Countdown(it) }
         "BETWEEN_HOURS" -> time(event.time)?.let { from -> time(event.toTime)?.takeIf { it != from }?.let { Trigger.Interval(from, it, days(event.days)) } }

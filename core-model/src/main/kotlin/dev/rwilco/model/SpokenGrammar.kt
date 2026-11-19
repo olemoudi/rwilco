@@ -48,6 +48,9 @@ internal sealed interface Piece {
 
     /** "Cuando me vaya de aquí" with no position yet to draw it around. */
     data object Here : Piece
+
+    /** "Cualquier día de lunes a jueves": one of [days], not each of them ([anyDayOf]). */
+    data class AnyDay(val days: Set<DayOfWeek>) : Piece
 }
 
 /** A piece and where in the text (as given) it was said. */
@@ -132,6 +135,9 @@ internal fun composeWhen(text: String, skip: List<IntRange>, context: Context): 
     } + markers.map { HeardSpan(it.second, null) }
     val override = markers.map { it.first }.distinct().singleOrNull()
     if (markers.map { it.first }.distinct().size > 1) return Composed.Ambiguous
+    if (read.any { block -> block.said.orEmpty().any { it.piece is Piece.AnyDay } }) {
+        return if (markers.isEmpty()) anyDayOf(read, unmarked, context, spans, parts) else Composed.Ambiguous
+    }
     return when (val composed = rulesOf(read.filter { !it.said.isNullOrEmpty() }, override, context, spans)) {
         is Composed.Rules -> Composed.Rules(composed.rules, composed.match, composed.recurrence, composed.deadline, composed.spans, parts, composed.alternatives)
         else -> composed
@@ -144,7 +150,7 @@ private val Piece.family: TriggerFamily
         is Piece.When -> trigger.family
         is Piece.Fence -> if (condition is Condition.AtPlace || condition is Condition.Moving) TriggerFamily.PLACE else TriggerFamily.TIME
         is Piece.Stay, Piece.Here -> TriggerFamily.PLACE
-        is Piece.Comes, is Piece.Bound -> TriggerFamily.TIME
+        is Piece.Comes, is Piece.Bound, is Piece.AnyDay -> TriggerFamily.TIME
     }
 
 /** A trigger said beside a rule's event: whether a join brought it, and the other reading of an open hour in it. */
@@ -410,6 +416,14 @@ private fun readOne(text: String, whole: String, context: Context, fence: Boolea
         val window = if (m.groupValues[4].isEmpty()) null else windowOf(m.groupValues[4], m.groupValues[5], m.qualifier(6), m.groupValues[8], m.groupValues[9], m.qualifier(10), shape, today) ?: return@let
         return said(Piece.When(Trigger.Random(times, period, window?.from ?: RANDOM_FROM, window?.to ?: RANDOM_TO)), m)
     }
+    // "Cualquier día de lunes a jueves": one of those days, before any reader takes the days for
+    // a series or a fence, or its "hasta el jueves" for a deadline.
+    ANY_DAY_RUN.find(words)?.let { m ->
+        val first = weekdayNamed(m.groupValues[1]) ?: return@let
+        val last = weekdayNamed(m.groupValues[2])?.takeIf { it != first } ?: return@let
+        return said(Piece.AnyDay(generateSequence(first) { it.plus(1) }.takeWhile { it != last }.toSet() + last), m)
+    }
+    for ((pattern, days) in ANY_DAY_KINDS) pattern.find(words)?.let { return said(Piece.AnyDay(days), it) }
     // "Del 1 al 15 de octubre", "entre el 1 y el 15": a stretch of the calendar, both ends in it.
     for (pattern in DATE_SPANS) {
         pattern.find(words)?.let { m ->
@@ -736,6 +750,20 @@ private val DAY_KINDS: List<Pair<Regex, Set<DayOfWeek>>> = listOf(
     Regex("\\b$IF_IT_IS(?:entre semana|(?:(?:los|en) )?(?:dias )?laborables?|(?:dia )?laborable|on weekdays|weekdays|a weekday)\\b") to WORKDAYS,
 )
 
+/**
+ * "Cualquier día de lunes a jueves", "algún día del lunes al jueves", "any day from monday to
+ * thursday": one day of a run, not each of them. Groups: the first day, the last.
+ */
+private val ANY_DAY_RUN = Regex(
+    "\\b(?:(?:cualquier|algun|un) dia del?|(?:any|some) day(?: from)?) $WEEKDAY_WORDS_PATTERN (?:al?|hasta el|to|through|thru) $WEEKDAY_WORDS_PATTERN\\b",
+)
+
+/** "Algún día entre semana", "cualquier día del finde", "any weekday": one day of a kind. */
+private val ANY_DAY_KINDS: List<Pair<Regex, Set<DayOfWeek>>> = listOf(
+    Regex("\\b(?:(?:cualquier|algun|un) dia (?:entre semana|laborable|de diario)|(?:any|some) weekday)\\b") to WORKDAYS,
+    Regex("\\b(?:(?:cualquier|algun|un) dia del? (?:fin de semana|finde)|(?:any|some) day (?:on|at|during|of) the weekend)\\b") to WEEKEND,
+)
+
 private val WEEKDAY_NAME = Regex("\\b${WEEKDAY_WORDS_PATTERN}s?\\b")
 
 /** After "sólo si": "es viernes", "los lunes y jueves". */
@@ -803,7 +831,7 @@ private fun rulesOf(blocks: List<Block>, override: RuleMatch?, context: Context,
     for ((join, piece) in sequence) {
         if (join == Join.ONLY_IF) fencing = true else if (join != null && join != Join.AND) fencing = false
         when (piece) {
-            is Piece.Comes, is Piece.Bound, Piece.Here -> Unit
+            is Piece.Comes, is Piece.Bound, Piece.Here, is Piece.AnyDay -> Unit
             is Piece.Stay -> {
                 val doorway = drafts.lastOrNull()?.event as? Trigger.Location
                 if (doorway == null || !doorway.onCrossing) return Composed.Ambiguous
@@ -941,6 +969,49 @@ private fun rulesOf(blocks: List<Block>, override: RuleMatch?, context: Context,
     }
     return Composed.Rules(fold, match, recurrence, deadline, spans, alternatives = alternatives)
 }
+
+/**
+ * "A partir del 1 de febrero, cualquier día de lunes a jueves, en horario de atención al público"
+ * is **one day**, not a series (the owner, 2026-11-19): the first of those days from the start
+ * said — or from today — whose stretch has not closed yet, rung inside the stretch of hours said
+ * with it. Written as that day ([Trigger.DayRandom]), so it rings once; a day missed is answered
+ * like any other unanswered ring. Beside anything else — an hour, a place, a repeat, a date not
+ * said as where the days start, an "o" — it is more than this reads, and a person decides.
+ */
+private fun anyDayOf(blocks: List<Block>, text: String, context: Context, spans: List<IntRange>, parts: List<HeardSpan>): Composed {
+    if (blocks.any { it.join != null && it.join.join != Join.AND }) return Composed.Ambiguous
+    val here = context.now.atZone(context.zone)
+    val today = here.toLocalDate()
+    val shape = context.settings.dayShape
+    val waking = shape.wakingDate(here.toLocalDateTime())
+    var days: Set<DayOfWeek>? = null
+    var start: java.time.LocalDate? = null
+    var window: DayWindow? = null
+    for (said in blocks.flatMap { it.said.orEmpty() }) {
+        val piece = said.piece
+        val trigger = (piece as? Piece.When)?.trigger?.let { settled(it, today, waking) }
+        when {
+            piece is Piece.AnyDay && days == null -> days = piece.days
+            trigger is Trigger.Interval && trigger.days.isEmpty() && window == null -> window = DayWindow(trigger.from, trigger.to)
+            trigger is Trigger.DayRandom && trigger.window == null && start == null && saidAsStart(text, said.spans) -> start = trigger.date
+            else -> return Composed.Ambiguous
+        }
+    }
+    val allowed = days ?: return Composed.Ambiguous
+    // Today only while what it rings in is still ahead: office hours closed at two are the next day's.
+    fun open(day: java.time.LocalDate) = day > today || (window?.on(day) ?: shape.awakeOn(day)).to > here.toLocalDateTime()
+    val day = generateSequence(maxOf(start ?: today, today)) { it.plusDays(1) }.take(DAYS_IN_A_WEEK + 1)
+        .firstOrNull { it.dayOfWeek in allowed && open(it) } ?: return Composed.Ambiguous
+    return Composed.Rules(listOf(TriggerRule(Trigger.DayRandom(day, window))), RuleMatch.ANY, Recurrence.None, null, spans, parts)
+}
+
+/** Whether the day read at [spans] was said as where something starts: "a partir del 1", "desde el lunes". */
+private fun saidAsStart(text: String, spans: List<IntRange>): Boolean =
+    STARTING.containsMatchIn(Words.of(text.substring(0, spans.minOf { it.first })).text)
+
+private val STARTING = Regex("\\b(?:a partir del?|desde(?: el)?|from|starting(?: on| from)?) $")
+
+private const val DAYS_IN_A_WEEK = 7
 
 /** Whether a moment, read as a date and an hour, falls in the person's waking hours. */
 private fun awake(trigger: Trigger, today: java.time.LocalDate, waking: java.time.LocalDate, shape: DayShape): Boolean =

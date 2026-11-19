@@ -1874,6 +1874,10 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_214_0">
+
+        <item>Saying «any day from Monday to Thursday» (or «any weekday», «cualquier día entre semana») now makes one reminder for one day, not a series: «book an appointment starting February 1st, any day from Monday to Thursday, during opening hours» rings once, on the first of those days from 1 February, inside that window. Before, a weekly repeat came out of it.</item>
+    </string-array>
     <string-array name="whats_new_0_213_0">
 
         <item>The ICYMI waits while a card about the reminder is showing in the shade, and is no longer lost: once you swipe the card away or it disappears after a restart, it arrives within the hour. Before, if the card was still there when it was due, that ICYMI never came.</item>

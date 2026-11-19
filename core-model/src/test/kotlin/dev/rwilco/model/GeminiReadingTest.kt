@@ -63,6 +63,17 @@ class GeminiReadingTest {
     }
 
     @Test
+    fun `a day may carry the stretch of it it is due in`() {
+        // "Cualquier día de lunes a jueves en horario de atención": one day, its hours (2026-11-19).
+        val spoken = read("""{"text":"pedir cita","match":"ANY","rules":[{"event":{"kind":"DAY","date":"2027-02-01","time":"09:00","toTime":"14:00"}}]}""")
+        assertEquals(listOf(TriggerRule(Trigger.DayRandom(LocalDate.of(2027, 2, 1), DayWindow(LocalTime.of(9, 0), LocalTime.of(14, 0))))), spoken.rules)
+        // An hour alone is not a stretch: the day stays the whole day, as before.
+        val alone = read("""{"text":"pedir cita","match":"ANY","rules":[{"event":{"kind":"DAY","date":"2027-02-01","time":"09:00"}}]}""")
+        assertEquals(listOf(TriggerRule(Trigger.DayRandom(LocalDate.of(2027, 2, 1)))), alone.rules)
+        assertTrue("ONE day" in geminiInstruction(now, zone, settings), "and Gemini is told any day of several is one day")
+    }
+
+    @Test
     fun `here needs a position, and is a circle round it once there is one`() {
         val json = """{"text":"sacar la basura","match":"ANY","rules":[{"event":{"kind":"LEAVE_HERE"}}]}"""
         assertEquals(Heard.NeedsHere("lo dicho"), heard(json))

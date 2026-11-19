@@ -23,7 +23,8 @@ class SpokenCompositionTest {
     private val gimnasio = SavedPlace("Gimnasio", 40.42, -3.68, 80, id = "p-gimnasio")
     private val home = SavedPlace("Home", 51.50, -0.12, 100, id = "p-home")
     private val comida = SavedWindow("a la hora de comer", LocalTime.of(13, 30), LocalTime.of(15, 30))
-    private val settings = AppSettings(savedPlaces = listOf(casa, oficina, gimnasio, home), savedWindows = listOf(comida))
+    private val atencion = SavedWindow("horario de atención al público", LocalTime.of(9, 0), LocalTime.of(14, 0))
+    private val settings = AppSettings(savedPlaces = listOf(casa, oficina, gimnasio, home), savedWindows = listOf(comida, atencion))
     private val fix = Fix(40.45, -3.65, 20.0, now)
 
     private fun heard(text: String, here: Fix? = null) = hear(text, now, zone, settings, here, hereLabel = "aquí")
@@ -467,6 +468,68 @@ class SpokenCompositionTest {
         val spoken = (hear("la pastilla a las 9 y todos los días a las 9", early, zone, settings) as Heard.Read).spoken
         assertEquals(t(9), (spoken.recurrence as Recurrence.Calendar).repeat.time)
         assertEquals(emptyList<TriggerRule>(), spoken.rules)
+    }
+
+    // --- one day of several (2026-11-19) ---
+
+    @Test
+    fun `any day of a run, from a date, in a saved window, is the first such day in that window`() {
+        // The owner's sentence: once, not a series.
+        val spoken = read("pedir cita a partir del 1 de febrero, cualquier día de lunes a jueves y en horario de atención al público")
+        assertEquals("Pedir cita", spoken.text)
+        // 1 February 2027 is a Monday: that day itself.
+        assertEquals(listOf(TriggerRule(Trigger.DayRandom(LocalDate.of(2027, 2, 1), DayWindow(t(9), t(14))))), spoken.rules)
+        assertEquals(Recurrence.None, spoken.recurrence)
+        assertEquals(spoken, read("pedir cita a partir del 1 de febrero, cualquier día de lunes a viernes y en horario de atención al público"))
+        // And it is written as it stands, with nobody looking.
+        assertTrue(spoken.toReminder("r", now, zone, settings) != null)
+    }
+
+    @Test
+    fun `a run said up to its last day is still the run, not a deadline`() {
+        val spoken = read("pedir cita cualquier día de lunes hasta el jueves")
+        assertEquals("Pedir cita", spoken.text)
+        // Thursday at 15:00, still awake: today.
+        assertEquals(listOf(TriggerRule(Trigger.DayRandom(LocalDate.of(2026, 8, 27)))), spoken.rules)
+        assertTrue(spoken.toReminder("r", now, zone, settings) != null)
+    }
+
+    @Test
+    fun `a start that is not one of the days moves on to the first that is`() {
+        // 5 February 2027 is a Friday.
+        val spoken = read("pedir cita desde el 5 de febrero cualquier día de lunes a jueves")
+        assertEquals("Pedir cita", spoken.text)
+        assertEquals(listOf(TriggerRule(Trigger.DayRandom(LocalDate.of(2027, 2, 8)))), spoken.rules)
+    }
+
+    @Test
+    fun `with no start it is the first of the days still open from now`() {
+        // Thursday at 15:00: a working day, and still awake…
+        val today = read("llamar al banco algún día entre semana")
+        assertEquals("Llamar al banco", today.text)
+        assertEquals(listOf(TriggerRule(Trigger.DayRandom(LocalDate.of(2026, 8, 27)))), today.rules)
+        // …but its office hours have closed, so it is Friday's — and a Monday-to-Thursday's is Monday's.
+        val friday = read("llamar al banco cualquier día laborable en horario de atención al público")
+        assertEquals(listOf(TriggerRule(Trigger.DayRandom(LocalDate.of(2026, 8, 28), DayWindow(t(9), t(14))))), friday.rules)
+        val monday = read("llamar al banco cualquier día de lunes a jueves en horario de atención al público")
+        assertEquals(listOf(TriggerRule(Trigger.DayRandom(LocalDate.of(2026, 8, 31), DayWindow(t(9), t(14))))), monday.rules)
+        assertEquals(listOf(TriggerRule(Trigger.DayRandom(LocalDate.of(2026, 8, 29)))), read("ordenar el trastero algún día del finde").rules)
+    }
+
+    @Test
+    fun `any day said in english`() {
+        val spoken = read("call the bank starting february 5th, any day from monday to thursday")
+        assertEquals("Call the bank", spoken.text)
+        assertEquals(listOf(TriggerRule(Trigger.DayRandom(LocalDate.of(2027, 2, 8)))), spoken.rules)
+        assertEquals(listOf(TriggerRule(Trigger.DayRandom(LocalDate.of(2026, 8, 27)))), read("call the bank any weekday").rules)
+    }
+
+    @Test
+    fun `any day beside what it cannot hold is for a person`() {
+        // A date not said as where the days start, which the days may well contradict.
+        assertEquals(Heard.Why.PARTIAL, unsure("pedir cita el 5 de febrero, cualquier día de lunes a jueves"))
+        assertEquals(Heard.Why.PARTIAL, unsure("pedir cita cualquier día de lunes a jueves al llegar a casa"))
+        assertEquals(Heard.Why.PARTIAL, unsure("pedir cita cualquier día de lunes a jueves o el sábado"))
     }
 
     // --- more than one reading ---

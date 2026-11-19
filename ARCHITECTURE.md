@@ -1515,7 +1515,15 @@ loud what DST and a change of zone do to a landing.
   deadlines: `Ambiguous`, a person decides. A deadline applies to a set (`deadlineApplies`) and
   beside one rule a window becomes its fence; a calendar with the one date said beside it starts
   there ("el 3 de marzo cada año"), unless their hours disagree; fences with no rule go on the
-  calendar; "tres veces al día" is `ByTrigger`. How to be told is said with the rest ("con
+  calendar; "tres veces al día" is `ByTrigger`. **One day of several (0.214.0, `anyDayOf`, the
+  owner's call of 2026-11-19):** "cualquier día de lunes a jueves", "algún día entre semana",
+  "any weekday" is one day, never a series — read before anything takes the days for a calendar
+  or a fence, and composed on its own: the first of those days from the start said ("a partir del
+  1 de febrero", `saidAsStart`) or from today whose stretch is still ahead, written as
+  `DayRandom(day, window)` with the window said beside it. Beside anything else, or beside a date
+  not said as a start, it is `Ambiguous`; Gemini is told the same, and its DAY may carry a
+  window. Without "cualquier día" a run of weekdays is still the series it was ("fichar de lunes
+  a viernes"). How to be told is said with the rest ("con
   pantalla completa", "que suene hasta que conteste", "sin sonido", "solo una notificación",
   `SpokenActions`, applied to the person's own defaults). `hear` asks for a position only when
   the rest would be written (it reads once with a stand-in for "aquí"). A reading `toReminder`
