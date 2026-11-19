@@ -888,6 +888,7 @@
     <string name="update_state_installing">Instalando %1$s…</string>
     <string name="update_state_pending">Esperando a que confirmes la instalación</string>
     <string name="update_state_staged">%1$s está descargada y lista para instalar</string>
+    <string name="update_state_waiting">%1$s se instalará cuando salgas de la app</string>
     <string name="update_ready_badge">Actualización lista para instalar</string>
     <string name="update_state_failed">La última comprobación falló (%1$s)</string>
     <string name="perm_install_missing">Para instalar actualizaciones hace falta permiso para instalar apps desconocidas.</string>
@@ -1859,6 +1860,10 @@
         <item>Los ajustes de sonido ya se pueden escuchar en condiciones: el volumen de alarma del móvil es un deslizador ahí mismo, para elegir un sonido al volumen al que va a llegar de verdad; «Oírlo en continuo» lo reproduce como lo hace un aviso a pantalla completa, una y otra vez (y se para solo a los treinta segundos); y cada uno de esos botones pasa a ser «Parar» mientras suena.</item>
     </string-array>
 
+    <string-array name="whats_new_0_215_0">
+
+        <item>Las actualizaciones se instalan solas, sin pedirte que confirmes, como debían haberlo hecho siempre: la app lo pedía pero le faltaba el permiso con el que Android le hace caso. Esta actualización aún pregunta una vez; las siguientes ya no. Nunca se instalan con Rwilco en pantalla —un recordatorio a medio escribir, una alerta sonando—, sino que esperan a que salgas de la app; Ajustes lo dice, y «Instalar ahora» sigue ahí.</item>
+    </string-array>
     <string-array name="whats_new_0_214_0">
 
         <item>Decir «cualquier día de lunes a jueves» (o «algún día entre semana», «cualquier día del finde») ya es un solo día, no una serie: «pedir cita a partir del 1 de febrero, cualquier día de lunes a jueves, en horario de atención al público» suena una vez, el primero de esos días desde el 1 de febrero y dentro de esa franja. Antes salía un recordatorio que se repetía cada semana.</item>

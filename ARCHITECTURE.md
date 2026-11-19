@@ -4600,6 +4600,18 @@ was a trip to GitHub) runs `Updater`, which reads the manifest of the channel th
 keeps a declined APK for the one-tap retry in Settings (`AppUpdateCard`). `BootReceiver` re-arms
 after boot and after the update itself.
 
+**Updates go in without asking** (0.215.0, the owner: "como znhr"). The session always asked for
+`USER_ACTION_NOT_REQUIRED`, but without `UPDATE_PACKAGES_WITHOUT_USER_ACTION` in the manifest the
+platform ignores it, so every update prompted (`InstallMomentTest` holds the permission in place).
+The first update installed *by* a build without it still asks; later ones do not, on Android 12+.
+And since an install replaces the process with nobody asked, it never starts while Rwilco is on
+screen (`ProcessLifecycleOwner` STARTED: Home, the editor, an alert ringing) or under a screen it
+opened (a sound picker, Android's settings: another package on top of one of its `appTasks`),
+unless it was asked for by hand (`installMayStartNow`). It waits as `UpdateUiState.Waiting` ("se
+instalará cuando salgas de la app", the "Instalar ahora" button beside it), and leaving the app
+installs it (`RwilcoApplication`, `UpdateWorker.installOnLeaving`); a process that died meanwhile
+finds the staged APK at the next check, in the background.
+
 **The download resumes, and that is what makes it arrive** (0.113.0). The APK is sixty megabytes
 and a worker gets ten minutes, so a weak connection cannot finish one in a single attempt — and
 every attempt used to start at byte zero, so the five retries WorkManager schedules spent three

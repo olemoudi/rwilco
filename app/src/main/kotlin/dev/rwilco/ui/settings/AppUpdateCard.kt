@@ -158,6 +158,7 @@ private fun updateStatusText(state: UpdateUiState, staged: UpdateInfo?): String 
             ?.let { stringResource(R.string.update_state_downloading_percent, state.target.versionName, it) }
             ?: stringResource(R.string.update_state_downloading, state.target.versionName)
         is UpdateUiState.Installing -> stringResource(R.string.update_state_installing, state.target.versionName)
+        is UpdateUiState.Waiting -> stringResource(R.string.update_state_waiting, state.target.versionName)
         is UpdateUiState.PendingConfirmation -> stringResource(R.string.update_state_pending)
         is UpdateUiState.Failed -> stringResource(R.string.update_state_failed, state.step)
     }

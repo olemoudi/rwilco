@@ -899,6 +899,7 @@
     <string name="update_state_installing">Installing %1$s…</string>
     <string name="update_state_pending">Waiting for you to confirm the install</string>
     <string name="update_state_staged">%1$s is downloaded and ready to install</string>
+    <string name="update_state_waiting">%1$s will install when you leave the app</string>
     <string name="update_ready_badge">Update ready to install</string>
     <string name="update_state_failed">Last check failed (%1$s)</string>
     <string name="perm_install_missing">Installing updates needs permission to install unknown apps.</string>
@@ -1874,6 +1875,10 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_215_0">
+
+        <item>Updates install by themselves, without asking you to confirm, the way they should have all along: the app requested it but lacked the permission that makes Android listen. This update still asks once; the next ones will not. They never install while Rwilco is on screen — a half-written reminder, an alert ringing — but wait until you leave the app; Settings says so, and «Install now» is still there.</item>
+    </string-array>
     <string-array name="whats_new_0_214_0">
 
         <item>Saying «any day from Monday to Thursday» (or «any weekday», «cualquier día entre semana») now makes one reminder for one day, not a series: «book an appointment starting February 1st, any day from Monday to Thursday, during opening hours» rings once, on the first of those days from 1 February, inside that window. Before, a weekly repeat came out of it.</item>

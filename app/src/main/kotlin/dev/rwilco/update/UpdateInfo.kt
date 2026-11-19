@@ -76,6 +76,16 @@ fun keepsApkAfterFailure(status: Int): Boolean =
     status == android.content.pm.PackageInstaller.STATUS_FAILURE_ABORTED ||
         status == android.content.pm.PackageInstaller.STATUS_FAILURE_BLOCKED
 
+/**
+ * Whether an install may start now (0.215.0). Updates go in without asking since then, and an
+ * install replaces the running process: so never while Rwilco is on screen — a reminder half
+ * written, an alert ringing — nor while a screen it opened (a sound picker, Android's settings)
+ * is on top of it, unless somebody asked for this one by hand. Otherwise it waits for the app to
+ * be left.
+ */
+fun installMayStartNow(manual: Boolean, appOnScreen: Boolean, openedScreenOnTop: Boolean): Boolean =
+    manual || (!appOnScreen && !openedScreenOnTop)
+
 /** What a check does next, once it knows everything it can learn without acting. */
 enum class UpdateStep {
     NOTHING_TO_DO,

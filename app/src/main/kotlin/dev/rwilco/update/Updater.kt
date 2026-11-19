@@ -1,5 +1,6 @@
 package dev.rwilco.update
 
+import android.app.ActivityManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
@@ -7,6 +8,8 @@ import android.content.pm.PackageInstaller
 import android.os.Build
 import android.util.Log
 import androidx.core.app.PendingIntentCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.ProcessLifecycleOwner
 import dev.rwilco.Distribution
 import dev.rwilco.RwilcoApplication
 import dev.rwilco.model.UpdateChannel
@@ -31,6 +34,8 @@ enum class UpdateCheckOutcome {
     INSTALL_FAILURE,
     /** Another check already holds the lock; this caller stood aside instead of fighting it. */
     BUSY,
+    /** Downloaded and checked, waiting for the app to be left before it installs ([installMayStartNow]). */
+    WAITING,
 }
 
 /**
@@ -241,7 +246,13 @@ class Updater(private val context: Context) {
     }
 
     /** Commits the install session for a checked APK; the final status lands in [InstallReceiver]. */
-    private fun commit(apk: File, target: UpdateInfo): UpdateCheckOutcome {
+    private suspend fun commit(apk: File, target: UpdateInfo): UpdateCheckOutcome {
+        if (!installMayStartNow(UpdateCenter.manual, appOnScreen(), openedScreenOnTop())) {
+            // Leaving the app installs it (RwilcoApplication); a later check in the background too.
+            Log.i(TAG, "${target.versionName} is ready; installing once the app is left")
+            UpdateCenter.report(UpdateUiState.Waiting(target))
+            return UpdateCheckOutcome.WAITING
+        }
         Log.i(TAG, "installing ${apk.length()} bytes (${target.versionName})")
         UpdateCenter.report(UpdateUiState.Installing(target))
         // Any prompt still in the shade belongs to a session install() is about to abandon.
@@ -255,6 +266,23 @@ class Updater(private val context: Context) {
         }
         return UpdateCheckOutcome.INSTALL_STARTED
     }
+
+    /** Whether any of Rwilco's screens is started: Home, the editor, an alert. */
+    private suspend fun appOnScreen(): Boolean = withContext(Dispatchers.Main) {
+        ProcessLifecycleOwner.get().lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
+    }
+
+    /**
+     * Somebody else's screen on top of Rwilco's own task: one it opened (a sound picker, Android's
+     * settings). The person is still in the middle of it, and an install would end the process
+     * under them (the sound picked: lost). Going home from there leaves it on top: the next time
+     * the app is left, it installs.
+     */
+    private fun openedScreenOnTop(): Boolean = runCatching {
+        context.getSystemService(ActivityManager::class.java).appTasks.any { task ->
+            task.taskInfo?.topActivity?.packageName.let { it != null && it != context.packageName }
+        }
+    }.getOrDefault(false)
 
     private fun currentVersionCode(): Int =
         context.packageManager.getPackageInfo(context.packageName, 0).longVersionCode.toInt()
@@ -364,7 +392,8 @@ class Updater(private val context: Context) {
         val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
         params.setAppPackageName(context.packageName)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            // A request, not a guarantee: silent once Rwilco is its own installer of record;
+            // A request, not a guarantee: silent once Rwilco is its own installer of record and
+            // holds UPDATE_PACKAGES_WITHOUT_USER_ACTION (0.215.0 — before, every update asked);
             // otherwise the system asks, which lands in InstallReceiver as pending-user-action.
             params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
         }

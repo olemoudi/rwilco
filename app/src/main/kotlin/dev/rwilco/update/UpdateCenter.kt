@@ -12,6 +12,8 @@ sealed interface UpdateUiState {
     data class Downloading(val target: UpdateInfo, val percent: Int? = null) : UpdateUiState
     /** The bytes are here and checked; the install session is being committed. */
     data class Installing(val target: UpdateInfo) : UpdateUiState
+    /** Downloaded and checked, held until Rwilco is left: installing replaces the app under whoever is using it. */
+    data class Waiting(val target: UpdateInfo) : UpdateUiState
     /** Waiting for the person to accept the system install dialog. */
     data class PendingConfirmation(val target: UpdateInfo?) : UpdateUiState
     data class Failed(val step: String) : UpdateUiState
@@ -53,6 +55,7 @@ object UpdateCenter {
     private fun targetOf(state: UpdateUiState): UpdateInfo? = when (state) {
         is UpdateUiState.Downloading -> state.target
         is UpdateUiState.Installing -> state.target
+        is UpdateUiState.Waiting -> state.target
         is UpdateUiState.PendingConfirmation -> state.target
         else -> null
     }

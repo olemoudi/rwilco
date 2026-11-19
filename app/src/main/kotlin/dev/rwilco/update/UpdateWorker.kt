@@ -37,7 +37,7 @@ class UpdateWorker(context: Context, params: WorkerParameters) : CoroutineWorker
         val updater = Updater(applicationContext)
         // Whether somebody is waiting for this one: the system's install dialog may come up
         // on its own only then; a check in the background leaves the notification to ask.
-        UpdateCenter.manual = stagedOnly || inputData.getBoolean(KEY_MANUAL, false)
+        UpdateCenter.manual = inputData.getBoolean(KEY_MANUAL, false)
         val outcome = if (stagedOnly) updater.installStaged() else updater.checkAndUpdate()
         Diag.note("update", "outcome=$outcome${if (stagedOnly) " (staged)" else ""}")
         return when (outcome) {
@@ -98,6 +98,14 @@ class UpdateWorker(context: Context, params: WorkerParameters) : CoroutineWorker
 
         /** Installs the APK already in the cache. Needs no network, so it asks for none. */
         fun installStagedNow(context: Context) {
+            enqueue(context, Constraints.NONE, workDataOf(KEY_STAGED_ONLY to true, KEY_MANUAL to true))
+        }
+
+        /**
+         * Installs the APK that was waiting for the app to be left (0.215.0). Not by hand: should
+         * the system ask after all, the notification asks, never a dialog of its own accord.
+         */
+        fun installOnLeaving(context: Context) {
             enqueue(context, Constraints.NONE, workDataOf(KEY_STAGED_ONLY to true))
         }
 

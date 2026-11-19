@@ -9,8 +9,9 @@ import androidx.core.content.IntentCompat
 import java.io.File
 
 /**
- * Receives PackageInstaller status callbacks. The system usually asks for confirmation, which
- * arrives here as STATUS_PENDING_USER_ACTION with an intent to launch. Launching directly only
+ * Receives PackageInstaller status callbacks. Since 0.215.0 an update normally goes in without
+ * asking; when the system does ask (the first update after an install by hand, or by a build
+ * older than that), it arrives here as STATUS_PENDING_USER_ACTION with an intent to launch. Launching directly only
  * works while the app is foregrounded (background activity starts are blocked since Android
  * 10), so a tappable notification is posted first — that is what makes the flow reliable when
  * the check ran in the background.

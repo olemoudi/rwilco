@@ -278,7 +278,9 @@ These are standing rules for this repository. Follow them without being re-asked
 - The app self-updates from GitHub Releases: `UpdateWorker` (periodic + on launch/boot) runs
   `Updater`, which reads the manifest of the channel the phone follows
   (`Distribution.manifestUrl`), compares `versionCode`, downloads the APK, validates it and
-  installs via `PackageInstaller`; the system shows the install confirmation. Keep the decision
+  installs via `PackageInstaller` — without asking on Android 12+ (keep
+  `UPDATE_PACKAGES_WITHOUT_USER_ACTION` in the manifest), and never while the app is on screen
+  unless the person asked (`installMayStartNow`). Keep the decision
   logic in pure functions (`UpdateInfo.kt`, `core-model`'s `UpdateChannel.kt`) with JVM tests.
 - `version.json` at `releases/latest` is kept published for installs that predate the channels:
   they read whatever `latest` names, which is always a beta, so they land on the beta channel by

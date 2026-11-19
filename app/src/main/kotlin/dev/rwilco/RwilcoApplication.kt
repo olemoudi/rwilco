@@ -6,6 +6,9 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import dev.rwilco.alarm.isUserUnlocked
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.core.content.ContextCompat
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
@@ -38,6 +41,8 @@ import dev.rwilco.model.contactsOutOfStep
 import dev.rwilco.model.overdueRoutines
 import dev.rwilco.notify.AlertNotifications
 import dev.rwilco.notify.SoundStore
+import dev.rwilco.update.UpdateCenter
+import dev.rwilco.update.UpdateUiState
 import dev.rwilco.update.UpdateWorker
 import dev.rwilco.vault.GitHubVault
 import dev.rwilco.vault.VaultBackup
@@ -127,6 +132,13 @@ class RwilcoApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // An update that arrived while Rwilco was on screen waits for it to be left (0.215.0):
+        // installing replaces the app, and it goes in without asking.
+        ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
+            override fun onStop(owner: LifecycleOwner) {
+                if (UpdateCenter.state.value is UpdateUiState.Waiting) UpdateWorker.installOnLeaving(this@RwilcoApplication)
+            }
+        })
         // **Before the first unlock nothing here can be built** (0.172.0). After a reboot the
         // database, the settings and every other store live in storage the phone has not
         // decrypted yet, and the process can be started by the one thing that runs then — the
