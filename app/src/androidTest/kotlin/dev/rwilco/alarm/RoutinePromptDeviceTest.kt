@@ -10,6 +10,7 @@ import dev.rwilco.RwilcoApplication
 import dev.rwilco.geo.PlaceWatchStore
 import dev.rwilco.R
 import dev.rwilco.model.Crossing
+import dev.rwilco.model.FiringKind
 import dev.rwilco.model.GeofenceIds
 import dev.rwilco.model.PlaceWatchState
 import dev.rwilco.model.Presence
@@ -138,6 +139,48 @@ class RoutinePromptDeviceTest {
         assertNotNull(first)
         app.firing.resetBy(id, ruleIndex = 0)
         assertEquals(first, app.repository.get(id)!!.lastDealtAt)
+    }
+
+    /**
+     * "La compra": two places that only count together (0.216.0). The first one crossed is a line
+     * in the history and nothing else — no count moved, nothing in the shade — the same crossing
+     * reported twice is still one, and the second place completes the round: the count starts
+     * again and the mute word names both.
+     */
+    @Test
+    fun twoPlacesThatCountTogetherAreOneHechoWhenTheSecondIsCrossed() = runBlocking {
+        val shop = UUID.randomUUID().toString()
+        val greengrocer = Trigger.Location(40.4170, -3.7036, 80, Presence.INSIDE, "Frutería", onCrossing = true)
+        val bakery = Trigger.Location(40.4180, -3.7046, 80, Presence.OUTSIDE, "Panadería", onCrossing = true)
+        val now = app.clock.instant()
+        app.repository.save(
+            Reminder(
+                id = shop,
+                text = "La compra",
+                rules = listOf(TriggerRule(greengrocer, resets = true), TriggerRule(nine), TriggerRule(bakery, resets = true)),
+                recurrence = Recurrence.Since(7, RecurrenceUnit.DAYS, allPlacesWithinMinutes = 120),
+                createdAt = now.minus(Duration.ofDays(6)),
+                updatedAt = now.minus(Duration.ofDays(6)),
+            ),
+        )
+        app.firing.resetBy(shop, ruleIndex = 0)
+        assertNull("one shop of two is not the deed", app.repository.get(shop)!!.lastDealtAt)
+        assertEquals(listOf(FiringKind.VISITED), app.repository.historyAsWritten(shop).map { it.kind })
+        assertNull("nothing in the shade for a visit", posted(context.getString(R.string.notif_reset_title, "La compra")))
+        // The fence and the watch report the same arrival minutes apart: one line, not two.
+        app.firing.resetBy(shop, ruleIndex = 0)
+        assertEquals(1, app.repository.historyAsWritten(shop).count { it.kind == FiringKind.VISITED })
+
+        app.firing.resetBy(shop, ruleIndex = 2)
+        val after = app.repository.get(shop)!!
+        assertNotNull("both shops are the deed", after.lastDealtAt)
+        assertEquals(listOf(FiringKind.VISITED, FiringKind.RESET), app.repository.historyAsWritten(shop).map { it.kind })
+        val notice = posted(context.getString(R.string.notif_reset_title, "La compra"))
+        assertNotNull("the mute word about it was not posted", notice)
+        assertEquals(
+            context.getString(R.string.notif_reset_all, "Frutería, Panadería"),
+            notice!!.extras.getCharSequence(Notification.EXTRA_TEXT).toString(),
+        )
     }
 
     /**

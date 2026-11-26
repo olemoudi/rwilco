@@ -611,6 +611,8 @@ fun EditorScreen(
                         ruleMatch = state.draft.ruleMatch,
                         onRuleMatch = viewModel::setRuleMatch,
                         routine = routine,
+                        allPlacesWithin = (state.draft.recurrence as? Recurrence.Since)?.allPlacesWithinMinutes,
+                        onAllPlacesWithin = viewModel::setAllPlacesWithin,
                         deadline = state.draft.deadline,
                         // Every door to a sheet puts the keyboard down first (0.93.0): the six
                         // that did not opened theirs over it.

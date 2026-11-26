@@ -46,6 +46,13 @@ enum class FiringKind {
 
     /** "Deshacer" on that: the count went back to where it was before the place counted it. */
     UNRESET,
+
+    /**
+     * One place of a round that only counts together ([Recurrence.Since.allPlacesWithinMinutes])
+     * was crossed, and the round is not complete yet — [FiringEvent.detail] says which doorway.
+     * Nothing changed on the routine; the line is what the round is read from (`AllPlaces.kt`).
+     */
+    VISITED,
 }
 
 data class FiringEvent(val kind: FiringKind, val at: Instant, val ruleIndex: Int? = null, val detail: String? = null)

@@ -700,6 +700,15 @@ fun EditorUiState.setRoutineStart(startsAt: Instant?): EditorUiState {
 }
 
 /**
+ * Whether a routine's places that count as done count each on its own (null) or only all
+ * together, inside this many minutes (0.216.0, `AllPlaces.kt`). Only a routine has the question.
+ */
+fun EditorUiState.setAllPlacesWithin(minutes: Int?): EditorUiState {
+    val since = draft.recurrence as? Recurrence.Since ?: return this
+    return copy(draft = draft.copy(recurrence = since.copy(allPlacesWithinMinutes = minutes?.takeIf { it > 0 })))
+}
+
+/**
  * The calendar sheet, opened on whatever is already set — including a legacy "el cuarto
  * miércoles", which opens as the calendar it always was and is written back as one.
  */

@@ -159,7 +159,7 @@ fun rounds(events: List<FiringEvent>, shape: RoundShape): List<Round> {
                 out += (open ?: OpenRound(event.at)).close(RoundEnd.SKIPPED, event.at)
                 open = null
             }
-            FiringKind.UNTICKED, FiringKind.ASKED, FiringKind.UNRESET -> Unit
+            FiringKind.UNTICKED, FiringKind.ASKED, FiringKind.UNRESET, FiringKind.VISITED -> Unit
         }
     }
     open?.let { out += it.trailing(shape) }

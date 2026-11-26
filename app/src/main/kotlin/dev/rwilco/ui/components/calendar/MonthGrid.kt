@@ -29,6 +29,10 @@ object MonthGrid {
     /** The seven weekdays in the locale's order, for the header row. */
     fun weekdays(firstDayOfWeek: DayOfWeek): List<DayOfWeek> = List(COLUMNS) { firstDayOfWeek.plus(it.toLong()) }
 
+    /** Whether [date] can be tapped: inside the bounds, either of which may be open (null). */
+    fun selectable(date: LocalDate, minDate: LocalDate?, maxDate: LocalDate?): Boolean =
+        (minDate == null || !date.isBefore(minDate)) && (maxDate == null || !date.isAfter(maxDate))
+
     fun monthAt(page: Int, base: YearMonth): YearMonth = base.plusMonths((page - BASE_PAGE).toLong())
 
     fun pageOf(month: YearMonth, base: YearMonth): Int =

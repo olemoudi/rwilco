@@ -2748,9 +2748,15 @@ loud what DST and a change of zone do to a landing.
   *now*, which is right for the tap and wrong for the day after — and once a routine has been
   done, the start chip moves nothing (`routineAnchor` reads `lastDealtAt` first). It is a row in
   the routines' `⋯` menu (not on a routine that rests: a day named into a frozen count is a
-  sentence nobody can read back), and `MomentSheet(allowPast, initialDate = yesterday, refuse)`
-  asks the day; `refuse` is the asker's own veto, so the sheet did not have to learn what a
-  routine is. **Three fences**: not the future (a plan is not a deed); not at or before the last
+  sentence nobody can read back), and `MomentSheet(allowPast, allowFuture = false, initialDate =
+  yesterday, refuse)` asks the day; `refuse` is the asker's own veto, so the sheet did not have to
+  learn what a routine is. **The grid's bounds follow the sheet's** (0.216.0): until then
+  `MomentSheet` never passed `minDate` to `MonthCalendar`, whose default is today, so with
+  `allowPast` every past day was inert — the sheet opened on yesterday already selected (the only
+  past day anybody could confirm, and the only one the tour test ever did) and no other could be
+  tapped, here and on a routine's start chip alike. Now `allowPast` opens the past
+  (`minDate = null`) and `allowFuture = false` shuts tomorrow (`maxDate = today`,
+  `MonthGrid.selectable`). **Three fences**: not the future (a plan is not a deed); not at or before the last
   "hecho" (that is un-doing, which has its own door); not onto a span already up — except for a
   **contact**, whose plazo running out is a turn in the draw and not an alarm, so "hablamos en
   mayo" is exactly what puts somebody back in it. **A door of its own, not `dismiss` with a date
@@ -2885,6 +2891,26 @@ loud what DST and a change of zone do to a landing.
   row wears "cuenta como hecho". `PromptTest` pins the model and a year of the car through
   `Simulation` (which grew `promptAt`, `ask`, `resetBy`, `crossRule`, and an `answer` beside
   `deal`); `PlaceGateTest` the circles; `RoutinePromptDeviceTest` the phone.
+  **Places that count only together** (0.216.0, `AllPlaces.kt`, the owner's ask: «varios lugares
+  como disparador de hecho, y que al visitarlos todos en un espacio de tiempo X se considere la
+  rutina hecha»). A routine with two or more places that count as done can say
+  `Recurrence.Since.allPlacesWithinMinutes`: every one of them crossed as its own rule says
+  (arriving or leaving, doorway or state), inside that many minutes, and the last of them is the
+  "hecho". Kept in the recurrence JSON (additive, `EncodeDefault.NEVER`, so no Room migration and
+  no vault change; `withSpanOf` carries it across a change of span, and a preset keeps it). The
+  places before the last are written down only — `FiringKind.VISITED` with the doorway in its
+  detail, no count moved, nothing in the shade — and **the round is read off the history**
+  (`placesVisited`), so it survives a process death between two shops: a line counts for a rule
+  when it is that rule's index *and* its doorway as the rule stands now (an edit that replaced the
+  place is not the place visited), inside the window counted back from the crossing (sliding), and
+  after the last "hecho", reset or undo of one (undone, a reset's visits must not complete the next
+  round by themselves). `ReminderFiring.resetBy` keeps every gate it had (paused, quiet, echo,
+  speed, fences) and adds two: the same rule visited within `PLACE_ECHO` is one visit (the fence
+  and the watch report the same crossing), and an incomplete round records the visit instead of
+  resetting. The reset that completes it names every place in its mute word (`notif_reset_all`).
+  `Rounds` ignores VISITED. The editor's "Y además" card asks «cada uno / todos» above the rules
+  only once two places count as done (`AllPlacesChoice`, lengths as chips from 30 min to a week).
+  `AllPlacesTest` pins the model; `RoutinePromptDeviceTest` and `RoutinesTourTest` the phone.
 - `ReminderScheduler` keeps one `setAlarmClock` armed per reminder — the only kind of alarm Doze
   never defers and the rate limiter never holds back — and writes the armed moment back to the
   row. **One pass at a time** (a mutex): passes come from six doors, and two side by side could

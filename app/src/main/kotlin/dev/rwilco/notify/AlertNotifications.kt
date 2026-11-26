@@ -405,8 +405,17 @@ object AlertNotifications {
      * whose only button undoes the thing leaves agreeing with it as a swipe, which is the same
      * gesture as ignoring it. Saying yes deserves a button of its own, and it goes first.
      */
-    fun resetNotice(context: Context, reminder: Reminder, place: Trigger.Location, previous: Instant?, line: Long? = null) {
+    fun resetNotice(
+        context: Context,
+        reminder: Reminder,
+        place: Trigger.Location,
+        previous: Instant?,
+        line: Long? = null,
+        /** Every place of the round by name, when it took all of them to count (0.216.0); null for one place. */
+        round: List<String>? = null,
+    ) {
         val doorRes = if (place.presence == Presence.INSIDE) R.string.notif_reset_arrive else R.string.notif_reset_leave
+        val said = if (round.isNullOrEmpty()) context.getString(doorRes, place.label) else context.getString(R.string.notif_reset_all, round.joinToString(", "))
         val undo = Intent(context, AlertActionReceiver::class.java)
             .setAction(AlertActionReceiver.ACTION_UNDO_RESET)
             .setData(ReminderScheduler.reminderUri(reminder.id))
@@ -419,7 +428,7 @@ object AlertNotifications {
             reminder,
             undo,
             context.getString(R.string.notif_reset_title, reminder.text),
-            context.getString(doorRes, place.label),
+            said,
             UNDO_NOTICE_MS,
             confirm = true,
         )

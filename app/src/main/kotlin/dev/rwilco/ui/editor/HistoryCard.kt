@@ -87,6 +87,14 @@ private fun eventWords(event: FiringEvent, today: LocalDate, zone: ZoneId): Stri
                 else -> stringResource(R.string.history_reset_leave, place.second)
             }
         }
+        FiringKind.VISITED -> {
+            val place = event.detail?.let(::snoozeDetailOf)
+            when {
+                place == null -> stringResource(R.string.history_visit)
+                place.first == Presence.INSIDE -> stringResource(R.string.history_visit_arrive, place.second)
+                else -> stringResource(R.string.history_visit_leave, place.second)
+            }
+        }
         FiringKind.SNOOZED -> when (snoozeWordOf(event.detail)) {
             // A routine answered "todavía no" is filed as a snooze because there is nothing else
             // to file it as — but nothing was postponed, and this line used to say there was.

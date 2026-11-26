@@ -376,6 +376,9 @@ class EditorViewModel(
     /** Where a routine's count starts: null is "ahora mismo". See [EditorUiState.setRoutineStart]. */
     fun setRoutineStart(startsAt: Instant?) = _state.update { it.setRoutineStart(startsAt) }
 
+    /** Each place that counts as done on its own (null), or all of them within so many minutes. */
+    fun setAllPlacesWithin(minutes: Int?) = _state.update { it.setAllPlacesWithin(minutes) }
+
     fun openCalendar() = _state.update { it.openCalendar() }
 
     fun commitCalendar(repeat: Trigger.Repeat) = _state.update { it.commitCalendar(repeat) }

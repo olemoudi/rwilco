@@ -1,7 +1,9 @@
 package dev.rwilco.ui.components.calendar
 
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -43,5 +45,19 @@ class MonthGridTest {
         assertEquals(YearMonth.of(2026, 10), MonthGrid.monthAt(MonthGrid.BASE_PAGE + 2, base))
         assertEquals(MonthGrid.BASE_PAGE - 3, MonthGrid.pageOf(YearMonth.of(2026, 5), base))
         assertEquals(YearMonth.of(2025, 12), MonthGrid.monthAt(MonthGrid.pageOf(YearMonth.of(2025, 12), base), base))
+    }
+
+    @Test
+    fun `a day is selectable inside its bounds, and an open bound lets everything through on that side`() {
+        val today = LocalDate.of(2026, 11, 26)
+        // A snooze: nothing before today.
+        assertFalse(MonthGrid.selectable(today.minusDays(1), minDate = today, maxDate = null))
+        assertTrue(MonthGrid.selectable(today.plusYears(1), minDate = today, maxDate = null))
+        // "Lo hice otro día": any day back, nothing ahead — the bug of 0.215.0 was the past shut.
+        assertTrue(MonthGrid.selectable(today.minusDays(40), minDate = null, maxDate = today))
+        assertTrue(MonthGrid.selectable(today, minDate = null, maxDate = today))
+        assertFalse(MonthGrid.selectable(today.plusDays(1), minDate = null, maxDate = today))
+        // A routine's start: either side.
+        assertTrue(MonthGrid.selectable(today.minusDays(400), minDate = null, maxDate = null))
     }
 }

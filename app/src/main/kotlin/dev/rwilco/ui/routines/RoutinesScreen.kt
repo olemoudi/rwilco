@@ -446,6 +446,7 @@ fun RoutinesScreen(
             onDismiss = viewModel::cancelDating,
             title = stringResource(if (contact) R.string.routines_talked_earlier_title else R.string.routines_done_earlier_title),
             allowPast = true,
+            allowFuture = false,
             initialDate = here.toLocalDate().minusDays(1),
             refuse = { at ->
                 when (asked.reminder.doneEarlierRefusal(at, here.toInstant(), zone, asked.dayStart)) {

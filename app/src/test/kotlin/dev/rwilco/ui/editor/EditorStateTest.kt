@@ -880,6 +880,21 @@ class EditorStateTest {
         assertFalse(routine.commitTrigger(null, garage).draft.rules.single().resets)
     }
 
+    @Test
+    fun `a routine's places count each on its own until told to count together, and the span keeps the answer`() {
+        val routine = blank.withText("La compra").setRecurrence(Recurrence.Since(1, RecurrenceUnit.WEEKS))
+        assertNull((routine.draft.recurrence as Recurrence.Since).allPlacesWithinMinutes, "each on its own, by default")
+        val together = routine.setAllPlacesWithin(120)
+        assertEquals(120, (together.draft.recurrence as Recurrence.Since).allPlacesWithinMinutes)
+        // The plazo is another question: picking a different one keeps the round's window.
+        val longer = together.setRecurrence(together.draft.recurrence.withSpanOf(Recurrence.After(2, RecurrenceUnit.WEEKS)))
+        assertEquals(Recurrence.Since(2, RecurrenceUnit.WEEKS, allPlacesWithinMinutes = 120), longer.draft.recurrence)
+        assertNull((longer.setAllPlacesWithin(null).draft.recurrence as Recurrence.Since).allPlacesWithinMinutes, "and back to «cada uno»")
+        assertNull((longer.setAllPlacesWithin(0).draft.recurrence as Recurrence.Since).allPlacesWithinMinutes, "no window is no window")
+        // Nothing to answer on anything that is not a routine.
+        assertEquals(Recurrence.None, blank.setAllPlacesWithin(60).draft.recurrence)
+    }
+
     /** A close work contact's form as the chooser opens it: Settings' three months, nothing set by hand. */
     private fun contactForm() = EditorUiState(
         loaded = true,

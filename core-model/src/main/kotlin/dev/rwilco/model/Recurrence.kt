@@ -123,6 +123,14 @@ sealed interface Recurrence {
          */
         @EncodeDefault(EncodeDefault.Mode.NEVER)
         val startsAt: Instant? = null,
+        /**
+         * When the places that count as done ([TriggerRule.resets]) only count **together**: every
+         * one of them crossed inside this many minutes, and the last of them is the "hecho"
+         * (0.216.0, `AllPlaces.kt`). Null is each place counting on its own, which is what every
+         * routine did. Never written when it is not asked for, for the same reason as [startsAt].
+         */
+        @EncodeDefault(EncodeDefault.Mode.NEVER)
+        val allPlacesWithinMinutes: Int? = null,
     ) : Recurrence
 
     /**
@@ -283,8 +291,8 @@ val Recurrence.landsOnAnHour: Boolean
  */
 fun Recurrence.withSpanOf(other: Recurrence): Recurrence = when {
     this is Recurrence.After && other is Recurrence.After -> other.copy(from = from, hour = hour, landing = landing)
-    this is Recurrence.Since && other is Recurrence.After -> Recurrence.Since(other.amount, other.unit, hour, startsAt)
-    this is Recurrence.Since && other is Recurrence.Since -> other.copy(hour = hour, startsAt = startsAt)
+    this is Recurrence.Since && other is Recurrence.After -> Recurrence.Since(other.amount, other.unit, hour, startsAt, allPlacesWithinMinutes)
+    this is Recurrence.Since && other is Recurrence.Since -> other.copy(hour = hour, startsAt = startsAt, allPlacesWithinMinutes = allPlacesWithinMinutes)
     else -> other
 }
 

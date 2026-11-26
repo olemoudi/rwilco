@@ -4,6 +4,8 @@ import android.app.LocaleManager
 import android.os.LocaleList
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasText
@@ -29,6 +31,7 @@ import dev.rwilco.R
 import dev.rwilco.RwilcoApplication
 import dev.rwilco.model.Action
 import dev.rwilco.model.Recurrence
+import dev.rwilco.model.Presence
 import dev.rwilco.model.RecurrenceUnit
 import dev.rwilco.model.Reminder
 import dev.rwilco.model.ThemeMode
@@ -46,6 +49,8 @@ import org.junit.BeforeClass
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.time.YearMonth
+import java.time.format.DateTimeFormatter
 import java.time.Duration
 import java.time.LocalTime
 import java.util.UUID
@@ -138,13 +143,28 @@ class RoutinesTourTest {
         rule.onNodeWithText(s(R.string.routines_done_earlier), useUnmergedTree = true).performClick()
         rule.waitUntilShown(s(R.string.routines_done_earlier_title))
         shot("routines-done-earlier")
+        // Four days ago, not the yesterday it opens on: until 0.216.0 every past day but the one
+        // the sheet opened on was greyed out, and this test only ever confirmed that one.
+        val today = app.clock.instant().atZone(app.clock.zone).toLocalDate()
+        val fourDaysAgo = today.minusDays(4)
+        if (YearMonth.from(fourDaysAgo) != YearMonth.from(today.minusDays(1))) {
+            rule.onNodeWithContentDescription(s(R.string.calendar_previous_month)).performClick()
+            rule.waitForIdle()
+        }
+        val locale = rule.activity.resources.configuration.locales[0]
+        rule.onNodeWithContentDescription(fourDaysAgo.format(DateTimeFormatter.ofPattern("EEEE d MMMM", locale)))
+            .assertIsEnabled()
+            .performClick()
+        // And tomorrow is no answer to "¿cuándo lo hiciste?".
+        if (YearMonth.from(today.plusDays(1)) == YearMonth.from(fourDaysAgo)) {
+            rule.onNodeWithContentDescription(today.plusDays(1).format(DateTimeFormatter.ofPattern("EEEE d MMMM", locale))).assertIsNotEnabled()
+        }
         rule.onNodeWithText(s(R.string.sheet_done), useUnmergedTree = true).performClick()
 
         rule.waitUntil(timeoutMillis = 10_000) { runBlocking { app.repository.get(carId) }?.lastDealtAt != null }
         val saved = runBlocking { app.repository.get(carId) }!!
-        val yesterday = app.clock.instant().atZone(app.clock.zone).toLocalDate().minusDays(1)
-        check(saved.lastDealtAt!!.atZone(app.clock.zone).toLocalDate() == yesterday) { "the count should run from yesterday, not from now: ${saved.lastDealtAt}" }
-        check(saved.routineDone(app.clock.instant(), app.clock.zone)) { "and with twenty days left of its twenty-one it is done for now" }
+        check(saved.lastDealtAt!!.atZone(app.clock.zone).toLocalDate() == fourDaysAgo) { "the count should run from four days ago, not from now: ${saved.lastDealtAt}" }
+        check(saved.routineDone(app.clock.instant(), app.clock.zone)) { "and with seventeen days left of its twenty-one it is done for now" }
         // Said and undone like any other "hecho".
         rule.waitUntilShown(s(R.string.common_undo))
     }
@@ -346,6 +366,47 @@ class RoutinesTourTest {
         shot("routines-editor-contact-when")
         // And the foot says what the net does for a contact, not what it does for something that rings.
         rule.onNodeWithText(s(R.string.editor_net_contact_note), useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+    }
+
+    /**
+     * "La compra" with two places that count as done (0.216.0): the form asks whether each counts
+     * on its own or all of them together, and in how long — and the answer is what gets saved.
+     */
+    @Test
+    fun placesThatCountAsDoneCanBeAskedToCountTogether() {
+        rule.waitUntil(timeoutMillis = 10_000) { rule.activity.resources.configuration.locales[0].language == "es" }
+        val shop = UUID.randomUUID().toString()
+        val now = app.clock.instant()
+        runBlocking {
+            app.repository.save(
+                Reminder(
+                    id = shop,
+                    text = "La compra",
+                    rules = listOf(
+                        TriggerRule(Trigger.Location(40.4170, -3.7036, 80, Presence.INSIDE, "Frutería", onCrossing = true), resets = true),
+                        TriggerRule(Trigger.Location(40.4180, -3.7046, 80, Presence.OUTSIDE, "Panadería", onCrossing = true), resets = true),
+                    ),
+                    recurrence = Recurrence.Since(7, RecurrenceUnit.DAYS),
+                    actions = setOf(Action.NOTIFICATION, Action.VIBRATE),
+                    createdAt = now,
+                    updatedAt = now,
+                ),
+            )
+        }
+        rule.waitUntilShown(s(R.string.home_routines_overdue_title))
+        rule.onNodeWithContentDescription(s(R.string.home_routines_open), substring = true).performClick()
+        rule.waitUntilShown(s(R.string.routines_title))
+        rule.onNodeWithContentDescription(s(R.string.card_edit, "La compra")).performScrollTo().performClick()
+        rule.waitUntilShown(s(R.string.places_count_all_label))
+        rule.onNodeWithText(s(R.string.places_count_each_hint), useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText(s(R.string.places_count_all)).performScrollTo().performClick()
+        rule.waitUntilShown(s(R.string.places_count_all_hint))
+        shot("routines-editor-all-places")
+        rule.onNodeWithText(s(R.string.countdown_hours, 4)).performScrollTo().performClick()
+        rule.onNodeWithText(s(R.string.common_save), useUnmergedTree = true).performClick()
+        rule.waitUntil(timeoutMillis = 10_000) {
+            (runBlocking { app.repository.get(shop) }?.recurrence as? Recurrence.Since)?.allPlacesWithinMinutes == 240
+        }
     }
 
     /** The keyboard down, the way WhenChipTest puts it down: it resizes the window and covers "Guardar". */

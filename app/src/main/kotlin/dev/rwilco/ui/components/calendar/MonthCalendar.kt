@@ -59,8 +59,8 @@ import kotlinx.coroutines.launch
 
 /**
  * A month at a time, swiped or stepped with the arrows. Six fixed rows so the sheet never
- * jumps; the selected day is the amber disc, today a ring. Past days are dimmed and inert
- * when [minDate] says so.
+ * jumps; the selected day is the amber disc, today a ring. Days before [minDate] or after
+ * [maxDate] are dimmed and inert; null on either side leaves that side open.
  */
 @Composable
 fun MonthCalendar(
@@ -69,6 +69,7 @@ fun MonthCalendar(
     onSelect: (LocalDate) -> Unit,
     modifier: Modifier = Modifier,
     minDate: LocalDate? = today,
+    maxDate: LocalDate? = null,
 ) {
     val locale = currentLocale()
     val firstDayOfWeek = remember(locale) { WeekFields.of(locale).firstDayOfWeek }
@@ -162,7 +163,7 @@ fun MonthCalendar(
                                 date = date,
                                 selected = date != null && date == selected,
                                 isToday = date == today,
-                                enabled = date != null && (minDate == null || !date.isBefore(minDate)),
+                                enabled = date != null && MonthGrid.selectable(date, minDate, maxDate),
                                 onSelect = { date?.let(onSelect) },
                                 modifier = Modifier.weight(1f),
                             )

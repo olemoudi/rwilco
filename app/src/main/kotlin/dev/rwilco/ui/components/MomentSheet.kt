@@ -48,6 +48,8 @@ fun MomentSheet(
     pastNote: String = stringResource(R.string.snooze_until_past),
     /** Whether a moment behind us is an answer: an anchor's is, a snooze's is not. */
     allowPast: Boolean = false,
+    /** Whether a day ahead of today is an answer: "¿cuándo lo hiciste?" is never tomorrow. */
+    allowFuture: Boolean = true,
     /** The day it opens on, where the question has a likelier answer than today: "¿cuándo lo hiciste?" is yesterday. */
     initialDate: LocalDate? = null,
     /**
@@ -72,7 +74,16 @@ fun MomentSheet(
         confirmEnabled = !past && refusal == null,
         dirty = listOf(date, time) != untouched,
     ) {
-        MonthCalendar(selected = date, today = today, onSelect = { date = it })
+        // The grid's own bounds follow the question. Until 0.216.0 it was left at its default
+        // (nothing before today), so an anchor or a "hecho" dated back opened on yesterday
+        // greyed out and no other past day could be tapped at all.
+        MonthCalendar(
+            selected = date,
+            today = today,
+            onSelect = { date = it },
+            minDate = if (allowPast) null else today,
+            maxDate = if (allowFuture) null else today,
+        )
         TimeField(time = time, onChange = { time = it }, label = stringResource(R.string.sheet_time), modifier = Modifier.fillMaxWidth())
         if (past || refusal != null) {
             Text(

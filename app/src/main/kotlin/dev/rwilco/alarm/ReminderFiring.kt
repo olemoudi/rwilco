@@ -91,7 +91,11 @@ import dev.rwilco.model.snoozeOfferOf
 import dev.rwilco.model.snoozeTerms
 import dev.rwilco.model.until
 import dev.rwilco.model.PLACE_ECHO
-import dev.rwilco.model.Presence
+import dev.rwilco.model.allPlacesWindow
+import dev.rwilco.model.completesPlaces
+import dev.rwilco.model.doorDetail
+import dev.rwilco.model.placesVisited
+import dev.rwilco.model.vouchingRules
 import dev.rwilco.model.asks
 import dev.rwilco.model.awakeAt
 import dev.rwilco.model.isRoutine
@@ -927,8 +931,21 @@ class ReminderFiring(
             rule.conditions.speedUnvouched(now, placeWatch.read().lastFix) -> dropped("nothing could vouch for the speed")
             else -> {
                 val failed = firstFailing(rule.conditions, askAll = true, now, moment = now)
+                // A round of places that only counts together (0.216.0, `AllPlaces.kt`): the
+                // history is what the round is read from, so it is only read when there is one.
+                val history = if (failed == null && reminder.allPlacesWindow != null) repository.history(id) else emptyList()
                 if (failed != null) {
                     dropped("the rule wants ${failed.said(placeWatch.read())}")
+                } else if (history.any { it.kind == FiringKind.VISITED && it.ruleIndex == ruleIndex && Duration.between(it.at, now) in Duration.ZERO..PLACE_ECHO }) {
+                    // The fence and the watch both report the same crossing, minutes apart.
+                    dropped("visited a moment ago")
+                } else if (!reminder.completesPlaces(ruleIndex, history, now)) {
+                    // One place of the round, and not the last: written down, and nothing else.
+                    // The routine is not done, so nothing in the shade says it is.
+                    val visited = reminder.placesVisited(history, now) + ruleIndex
+                    Log.i(TAG, "$id: ${place.label} visited, ${visited.size} of ${reminder.vouchingRules.size} (rule $ruleIndex)")
+                    Diag.note(TAG_DIAG, "r=${short(id)} VISITED ${visited.size}/${reminder.vouchingRules.size} (rule $ruleIndex)")
+                    repository.record(id, FiringKind.VISITED, now, ruleIndex, detail = place.doorDetail())
                 } else {
                     Log.i(TAG, "$id counted as done at ${place.label} (rule $ruleIndex)")
                     Diag.note(TAG_DIAG, "r=${short(id)} RESET by ${place.label} (rule $ruleIndex)")
@@ -939,7 +956,10 @@ class ReminderFiring(
                     // it, spends nothing ahead, and has no round to bound.
                     repository.dealtWith(id, now, Status.ACTIVE, reminder.dealtThrough, null)
                     line = repository.record(id, FiringKind.RESET, now, ruleIndex, detail = place.doorDetail())
-                    AlertNotifications.resetNotice(context, reminder, place, previous, line)
+                    // The round's places by name, when it took more than one to count.
+                    val round = reminder.vouchingRules.takeIf { reminder.allPlacesWindow != null }
+                        ?.mapNotNull { (reminder.rules[it].trigger as? Trigger.Location)?.label }
+                    AlertNotifications.resetNotice(context, reminder, place, previous, line, round)
                 }
             }
         }
@@ -1005,8 +1025,6 @@ class ReminderFiring(
         scheduler.rearmAll()
     }
 
-    /** The history's word for which doorway it was: the same shape a snooze to a place keeps. */
-    private fun Trigger.Location.doorDetail(): String = (if (presence == Presence.INSIDE) "arrive:" else "leave:") + label
 
     /**
      * "Posponer": it rings again then, and not at its own moment until it has.

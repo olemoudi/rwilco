@@ -706,6 +706,9 @@
     <string name="history_reset_leave">counted as done on leaving %1$s</string>
     <string name="history_reset_arrive">counted as done on arriving at %1$s</string>
     <string name="history_unreset">the place\'s «done» was undone</string>
+    <string name="history_visit_arrive">arrived at %1$s — one of the places that count together</string>
+    <string name="history_visit_leave">left %1$s — one of the places that count together</string>
+    <string name="history_visit">one of the places that count together</string>
     <string name="history_skipped">next round skipped</string>
     <string name="history_snoozed">put off</string>
     <string name="history_not_yet">said not yet</string>
@@ -936,6 +939,7 @@
     <string name="notif_reset_title">Routine done: %1$s</string>
     <string name="notif_reset_leave">Counted as done on leaving %1$s</string>
     <string name="notif_reset_arrive">Counted as done on arriving at %1$s</string>
+    <string name="notif_reset_all">Counted as done: you went by %1$s</string>
     <string name="notif_reset_confirm">Confirm as done</string>
     <!-- The net's mark on the words themselves: the sub-line that says which kind of card this
          is sits in the smallest type the shade has and is the first thing a narrow row drops. -->
@@ -1421,6 +1425,11 @@
     <string name="place_role_reset">Count as done, without asking</string>
     <string name="place_role_ask_hint">A question in the shade when you cross the line, with «yes, just now» one tap away.</string>
     <string name="place_role_reset_hint">Crossing the line is the deed itself — leaving the garage is the car moving. The count starts again by itself, and a quiet notice offers to undo it.</string>
+    <string name="places_count_each">Each one</string>
+    <string name="places_count_all">All of them</string>
+    <string name="places_count_each_hint">Any place marked «counts as done» marks it done by itself.</string>
+    <string name="places_count_all_hint">Done once you have been through every place marked «counts as done» — each the way its row says, arriving or leaving — within:</string>
+    <string name="places_count_all_label">Places that count as done</string>
     <string name="rule_resets">Counts as done</string>
     <string name="place_means_inside">Being there is enough: if you are already there when everything else is due, it rings. And it rings once a round: staying there does not ring it again until you mark it done or «Comes back» starts a new round.</string>
     <string name="place_means_outside">Being away is enough: if you are already away when everything else is due, it rings. And it rings once a round: staying away does not ring it again until you mark it done or «Comes back» starts a new round.</string>
@@ -1875,6 +1884,11 @@
         <item>The Sound settings can now be listened to properly: the phone\'s alarm volume is a slider right there, so a sound can be chosen at the level it will actually arrive at; «Oírlo en continuo» plays it the way a full-screen reminder does, round and round (and stops itself after half a minute); and every one of those buttons turns into «Parar» while it is playing.</item>
     </string-array>
 
+    <string-array name="whats_new_0_216_0">
+
+        <item>«I did it another day…» lets you pick any past day again. The calendar only let you confirm yesterday, the day it opens on: every other past day was greyed out. The same went for a routine\'s «when it starts» set in the past. Days ahead are now the greyed-out ones, because «when did you do it?» is never tomorrow.</item>
+        <item>A routine can be done by a round of places. With two or more places marked «counts as done», its card asks «each one» or «all of them», and how long you have: 30 min up to a week. With «all of them», the routine counts as done once you have been through every place (arriving or leaving, as each row says) within that time. The places before the last only go into its history, and the notice that it is done names every one of them, with «undo» as always.</item>
+    </string-array>
     <string-array name="whats_new_0_215_0">
 
         <item>Updates install by themselves, without asking you to confirm, the way they should have all along: the app requested it but lacked the permission that makes Android listen. This update still asks once; the next ones will not. They never install while Rwilco is on screen — a half-written reminder, an alert ringing — but wait until you leave the app; Settings says so, and «Install now» is still there.</item>

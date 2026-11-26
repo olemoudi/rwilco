@@ -73,6 +73,7 @@ import androidx.compose.ui.unit.dp
 import dev.rwilco.R
 import dev.rwilco.model.Action
 import dev.rwilco.model.RuleMatch
+import dev.rwilco.model.resetsRoutine
 import dev.rwilco.model.Trigger
 import dev.rwilco.model.Understood
 import dev.rwilco.model.Recurrence
@@ -516,6 +517,61 @@ private fun DeadlineButton(deadline: Deadline?, onDeadline: () -> Unit, onClear:
     }
 }
 
+/**
+ * "Cada uno" or "todos, en menos de…": how a routine's places that count as done count. The
+ * lengths are chips — the ones somebody means by "on the same errand", "the same morning",
+ * "the same day" and "this week" — because a stepper to the minute asks for a precision the
+ * question does not have.
+ */
+@Composable
+private fun AllPlacesChoice(within: Int?, onWithin: (Int?) -> Unit) {
+    val spacing = Tokens.spacing
+    Text(
+        text = stringResource(R.string.places_count_all_label),
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(bottom = spacing.xs),
+    )
+    SegmentedChoice(
+        options = listOf(stringResource(R.string.places_count_each), stringResource(R.string.places_count_all)),
+        selectedIndex = if (within == null) 0 else 1,
+        onSelect = { onWithin(if (it == 0) null else within ?: DEFAULT_ALL_PLACES_MINUTES) },
+    )
+    Text(
+        text = stringResource(if (within == null) R.string.places_count_each_hint else R.string.places_count_all_hint),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(top = spacing.xs, bottom = spacing.sm),
+    )
+    if (within != null) {
+        // One the chips do not offer (written elsewhere, or by an older list) is still shown,
+        // first and selected, rather than looking like nothing is chosen.
+        val lengths = if (within in ALL_PLACES_MINUTES) ALL_PLACES_MINUTES else listOf(within) + ALL_PLACES_MINUTES
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(spacing.sm),
+            modifier = Modifier.horizontalScroll(rememberScrollState()).padding(bottom = spacing.sm),
+        ) {
+            for (minutes in lengths) {
+                PresetChip(label = lengthLabel(minutes), selected = minutes == within, onClick = { onWithin(minutes) })
+            }
+        }
+    }
+}
+
+@Composable
+private fun lengthLabel(minutes: Int): String = when {
+    minutes % MINUTES_PER_DAY == 0 -> stringResource(R.string.countdown_days, minutes / MINUTES_PER_DAY)
+    minutes % 60 == 0 -> stringResource(R.string.countdown_hours, minutes / 60)
+    else -> stringResource(R.string.countdown_minutes, minutes)
+}
+
+private const val MINUTES_PER_DAY = 24 * 60
+
+/** What "todos" starts with: an errand's worth. */
+private const val DEFAULT_ALL_PLACES_MINUTES = 120
+
+private val ALL_PLACES_MINUTES = listOf(30, 60, 120, 240, 480, MINUTES_PER_DAY, 3 * MINUTES_PER_DAY, 7 * MINUTES_PER_DAY)
+
 @Composable
 internal fun TriggersSection(
     rules: List<TriggerRule>,
@@ -553,8 +609,19 @@ internal fun TriggersSection(
      * choose, no deadline to give up on, and an empty card that says what a rule would do here.
      */
     routine: Boolean = false,
+    /**
+     * Under a routine: whether its places that count as done count each on its own (null) or
+     * only all together, within so many minutes ([Recurrence.Since.allPlacesWithinMinutes]).
+     */
+    allPlacesWithin: Int? = null,
+    onAllPlacesWithin: (Int?) -> Unit = {},
 ) {
     Column {
+        // A routine's version of the same choice, and only about its places that count as done:
+        // its questions are asked one at a time whatever this says (0.216.0, `AllPlaces.kt`).
+        if (routine && rules.count { it.resetsRoutine } > 1) {
+            AllPlacesChoice(allPlacesWithin, onAllPlacesWithin)
+        }
         // The choice only exists once there is something to combine, and it comes before the
         // list because it changes what the list means.
         if (rules.size > 1 && !routine) {
